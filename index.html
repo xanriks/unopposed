@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>ReelMatch — swipe to find what to watch together</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.7/babel.min.js"></script>
+<style>
+  :root{
+    --ink:#14101F; --velvet:#211A33; --velvet2:#291F40; --haze:#372B52;
+    --glow:#FFC24B; --glow-soft:#FFD988; --rose:#FF5C7A; --cool:#7C9BE0;
+    --mist:#A99FC4; --text:#F4EEFF; --nope:#8E86A8;
+    --ok:#5BD6A0;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:'Inter',system-ui,sans-serif;
+    background:#0C0913;
+    color:var(--text);
+    min-height:100vh;
+    display:flex; align-items:center; justify-content:center;
+  }
+  /* Phone frame only on wide screens; full-bleed on real phones */
+  #stage{
+    width:100%; height:100dvh; position:relative; overflow:hidden;
+    background:var(--ink);
+  }
+  @media (min-width:720px){
+    body{
+      background:
+        radial-gradient(1200px 600px at 20% -10%, #221636 0%, transparent 60%),
+        radial-gradient(900px 500px at 90% 110%, #2a1030 0%, transparent 55%),
+        #0C0913;
+      padding:24px;
+    }
+    #stage{
+      width:392px; height:812px; border-radius:44px;
+      box-shadow:0 40px 120px rgba(0,0,0,.6), 0 0 0 11px #060409, 0 0 0 13px #241b38;
+    }
+  }
+  .app{position:absolute; inset:0; display:flex; flex-direction:column;}
+
+  h1,h2,h3,.display{font-family:'Bricolage Grotesque',sans-serif; letter-spacing:-.02em; margin:0;}
+  button{font-family:inherit; cursor:pointer; border:none; background:none; color:inherit;}
+  .muted{color:var(--mist);}
+
+  /* ---------- Top bar ---------- */
+  .topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:14px 18px 10px; flex:0 0 auto; z-index:6;
+  }
+  .brand{display:flex; align-items:center; gap:8px; font-family:'Bricolage Grotesque'; font-weight:800; font-size:20px;}
+  .brand .dot{width:9px;height:9px;border-radius:50%;background:var(--glow); box-shadow:0 0 14px var(--glow);}
+  .topbtns{display:flex; align-items:center; gap:8px;}
+  .modechip{
+    display:flex; align-items:center; gap:6px; font-size:12px; font-weight:600;
+    padding:7px 11px; border-radius:999px; background:var(--velvet); color:var(--mist);
+    border:1px solid var(--haze);
+  }
+  .modechip .live{width:7px;height:7px;border-radius:50%; background:var(--rose); box-shadow:0 0 8px var(--rose);}
+  .modechip .async{width:7px;height:7px;border-radius:50%; background:var(--cool); box-shadow:0 0 8px var(--cool);}
+  .iconbtn{
+    width:38px;height:38px;border-radius:12px;background:var(--velvet); border:1px solid var(--haze);
+    display:flex;align-items:center;justify-content:center; color:var(--mist); position:relative;
+  }
+  .iconbtn:active{transform:scale(.94);}
+  .badge{position:absolute; top:-5px; right:-5px; background:var(--rose); color:#fff; font-size:10px; font-weight:700;
+    min-width:16px;height:16px;border-radius:8px; display:flex;align-items:center;justify-content:center; padding:0 4px;}
+
+  /* ---------- Screens container ---------- */
+  .screen{flex:1 1 auto; position:relative; overflow-y:auto; -webkit-overflow-scrolling:touch;}
+  .pad{padding:6px 18px 24px;}
+
+  /* ---------- Swipe deck ---------- */
+  .deck{position:absolute; inset:0 18px 8px; }
+  .card{
+    position:absolute; inset:0; border-radius:26px; overflow:hidden;
+    box-shadow:0 24px 50px rgba(0,0,0,.5); will-change:transform;
+    user-select:none; touch-action:none;
+    display:flex; flex-direction:column; justify-content:flex-end;
+  }
+  .poster{position:absolute; inset:0;}
+  .poster::after{ /* film grain + darken bottom */
+    content:""; position:absolute; inset:0;
+    background:
+      radial-gradient(120% 80% at 50% 0%, transparent 40%, rgba(0,0,0,.25) 100%),
+      linear-gradient(to top, rgba(8,4,15,.92) 0%, rgba(8,4,15,.55) 34%, transparent 60%);
+  }
+  .grain{position:absolute; inset:0; opacity:.10; mix-blend-mode:overlay;
+    background-image:radial-gradient(rgba(255,255,255,.9) .5px, transparent .5px);
+    background-size:3px 3px;}
+  .postertitle{position:absolute; top:22px; left:20px; right:20px; font-family:'Bricolage Grotesque';
+    font-weight:800; font-size:34px; line-height:.98; text-shadow:0 2px 20px rgba(0,0,0,.5); opacity:.16;}
+  .cardbody{position:relative; padding:18px 20px 22px; z-index:2;}
+  .chips{display:flex; gap:7px; flex-wrap:wrap; margin-bottom:10px;}
+  .chip{font-size:11px; font-weight:600; padding:5px 9px; border-radius:999px;
+    background:rgba(255,255,255,.10); border:1px solid rgba(255,255,255,.14); backdrop-filter:blur(4px);}
+  .chip.svc{background:rgba(255,194,75,.16); border-color:rgba(255,194,75,.4); color:var(--glow-soft);}
+  .card h2{font-size:30px; line-height:1; margin-bottom:6px;}
+  .meta{display:flex; align-items:center; gap:10px; font-size:13px; color:var(--mist); margin-bottom:10px;}
+  .meta .rate{color:var(--glow); font-weight:700;}
+  .why{font-size:12.5px; color:var(--mist); display:flex; align-items:center; gap:6px;}
+  .overview{font-size:13px; color:#d8cff0; line-height:1.45; margin-top:10px; max-height:0; overflow:hidden; transition:max-height .3s;}
+  .card.expanded .overview{max-height:120px;}
+  .seenpill{position:absolute; top:20px; right:18px; z-index:3; font-size:11px; font-weight:700;
+    padding:7px 11px; border-radius:999px; background:rgba(20,16,31,.7); border:1px solid var(--haze);
+    color:var(--mist); display:flex; align-items:center; gap:6px; backdrop-filter:blur(6px);}
+  .seenpill.on{background:rgba(91,214,160,.18); border-color:rgba(91,214,160,.5); color:var(--ok);}
+
+  /* drag overlays */
+  .stamp{position:absolute; top:34px; z-index:4; font-family:'Bricolage Grotesque'; font-weight:800;
+    font-size:26px; letter-spacing:.06em; padding:8px 16px; border-radius:12px; opacity:0;
+    text-transform:uppercase; pointer-events:none;}
+  .stamp.yes{left:22px; color:var(--glow); border:3px solid var(--glow); transform:rotate(-14deg); box-shadow:0 0 30px rgba(255,194,75,.5);}
+  .stamp.no{right:22px; color:var(--cool); border:3px solid var(--cool); transform:rotate(14deg);}
+  .stamp.sup{left:50%; top:auto; bottom:120px; transform:translateX(-50%); color:var(--rose); border:3px solid var(--rose); box-shadow:0 0 30px rgba(255,92,122,.5);}
+  .glowedge{position:absolute; inset:0; border-radius:26px; pointer-events:none; opacity:0; box-shadow:inset 0 0 60px 8px var(--glow);}
+
+  .empty{position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:30px; gap:12px;}
+  .empty .film{font-size:40px; filter:drop-shadow(0 6px 20px rgba(255,194,75,.4));}
+  .empty h2{font-size:24px;}
+  .empty p{color:var(--mist); font-size:14px; max-width:240px; line-height:1.5;}
+  .textbtn{color:var(--glow); font-weight:600; font-size:14px; padding:8px 4px;}
+
+  /* ---------- Action bar (marquee bulbs) ---------- */
+  .actions{flex:0 0 auto; display:flex; align-items:center; justify-content:center; gap:16px; padding:14px 0 20px;}
+  .bulb{width:60px;height:60px;border-radius:50%; display:flex;align-items:center;justify-content:center;
+    background:var(--velvet); border:1px solid var(--haze); transition:transform .12s;}
+  .bulb:active{transform:scale(.88);}
+  .bulb.sm{width:48px;height:48px;}
+  .bulb.nope{color:var(--cool);}
+  .bulb.nope:active{box-shadow:0 0 26px rgba(124,155,224,.5);}
+  .bulb.like{color:var(--glow); border-color:rgba(255,194,75,.5);}
+  .bulb.like:active{box-shadow:0 0 30px rgba(255,194,75,.6);}
+  .bulb.super{color:var(--rose); border-color:rgba(255,92,122,.5);}
+  .bulb.super:active{box-shadow:0 0 30px rgba(255,92,122,.6);}
+  .bulb.seen{color:var(--ok);}
+
+  /* ---------- Bottom nav ---------- */
+  .nav{flex:0 0 auto; display:flex; justify-content:space-around; padding:8px 8px calc(10px + env(safe-area-inset-bottom));
+    background:linear-gradient(to top, var(--ink), rgba(20,16,31,.4)); border-top:1px solid var(--haze);}
+  .navbtn{display:flex; flex-direction:column; align-items:center; gap:3px; font-size:10px; font-weight:600;
+    color:var(--mist); padding:8px 12px 5px; border-radius:14px; position:relative;}
+  .navbtn.active{color:var(--glow);}
+  .navbtn.active svg{filter:drop-shadow(0 0 10px rgba(255,194,75,.6));}
+  .navbtn .nb{position:absolute; top:2px; right:6px; width:8px;height:8px;border-radius:50%; background:var(--rose);}
+
+  /* ---------- Generic list rows ---------- */
+  .sectiontitle{font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--mist); margin:18px 2px 10px;}
+  .head{padding:8px 2px 2px;}
+  .head h1{font-size:26px;}
+  .head p{color:var(--mist); font-size:14px; margin:6px 0 0;}
+  .row{display:flex; gap:12px; align-items:center; background:var(--velvet); border:1px solid var(--haze);
+    border-radius:16px; padding:10px; margin-bottom:10px;}
+  .thumb{width:48px;height:64px;border-radius:10px; flex:0 0 auto; position:relative; overflow:hidden;}
+  .thumb .t{position:absolute; inset:0; display:flex;align-items:center;justify-content:center; font-size:20px;}
+  .rowmain{flex:1 1 auto; min-width:0;}
+  .rowmain .tt{font-family:'Bricolage Grotesque'; font-weight:700; font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .rowmain .sub{font-size:12px; color:var(--mist); margin-top:2px;}
+  .tag{font-size:10px; font-weight:700; padding:3px 8px; border-radius:999px;}
+  .tag.want{background:rgba(255,194,75,.16); color:var(--glow);}
+  .tag.rewatch{background:rgba(255,92,122,.16); color:var(--rose);}
+
+  .stars{display:flex; gap:3px;}
+  .stars svg{cursor:pointer;}
+  .watchtoggle{font-size:11px; font-weight:700; padding:6px 10px; border-radius:999px; border:1px solid var(--haze); background:var(--velvet2); color:var(--mist);}
+  .watchtoggle.on{background:rgba(91,214,160,.16); border-color:rgba(91,214,160,.5); color:var(--ok);}
+
+  /* ---------- Chips selectors ---------- */
+  .grid{display:flex; flex-wrap:wrap; gap:9px;}
+  .selchip{padding:9px 13px; border-radius:999px; background:var(--velvet); border:1px solid var(--haze);
+    font-size:13px; font-weight:600; color:var(--mist); transition:all .12s;}
+  .selchip.on{background:rgba(255,194,75,.16); border-color:var(--glow); color:var(--glow-soft);}
+  .selchip.danger.on{background:rgba(255,92,122,.16); border-color:var(--rose); color:var(--rose);}
+  .svcgrid{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  .svccard{display:flex; align-items:center; gap:10px; padding:13px; border-radius:16px; background:var(--velvet);
+    border:1.5px solid var(--haze); font-weight:600; font-size:14px; transition:all .12s;}
+  .svccard .sw{width:34px;height:34px;border-radius:9px; flex:0 0 auto; display:flex;align-items:center;justify-content:center; font-weight:800; color:#fff; font-size:12px;}
+  .svccard.on{border-color:var(--glow); background:var(--velvet2);}
+  .svccard .tick{margin-left:auto; color:var(--glow); opacity:0;}
+  .svccard.on .tick{opacity:1;}
+
+  .slider{width:100%; margin:14px 0 6px; -webkit-appearance:none; height:6px; border-radius:999px;
+    background:linear-gradient(90deg,var(--glow),var(--rose)); outline:none;}
+  .slider::-webkit-slider-thumb{-webkit-appearance:none; width:24px;height:24px;border-radius:50%; background:#fff;
+    box-shadow:0 3px 10px rgba(0,0,0,.5); cursor:pointer;}
+
+  .cta{display:block; width:100%; text-align:center; padding:16px; border-radius:16px; font-weight:700; font-size:16px;
+    font-family:'Bricolage Grotesque'; background:linear-gradient(135deg,var(--glow),#ff9d4b); color:#1a1200;
+    box-shadow:0 12px 30px rgba(255,157,75,.3); margin-top:16px;}
+  .cta:active{transform:scale(.98);}
+  .ghostcta{display:block; width:100%; text-align:center; padding:14px; border-radius:16px; font-weight:600;
+    background:var(--velvet); border:1px solid var(--haze); color:var(--text); margin-top:10px;}
+
+  /* ---------- Match modal ---------- */
+  .overlay{position:absolute; inset:0; z-index:40; display:flex; align-items:center; justify-content:center;
+    background:rgba(6,4,12,.72); backdrop-filter:blur(6px); animation:fade .25s ease;}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+  .matchcard{width:82%; max-width:320px; text-align:center; padding:8px;}
+  .marquee{font-family:'Bricolage Grotesque'; font-weight:800; font-size:40px; line-height:.95;
+    color:var(--glow); text-shadow:0 0 30px rgba(255,194,75,.6); animation:pop .5s cubic-bezier(.2,1.4,.4,1);}
+  .marquee.rw{color:var(--rose); text-shadow:0 0 30px rgba(255,92,122,.6);}
+  @keyframes pop{0%{transform:scale(.5); opacity:0}60%{transform:scale(1.08)}100%{transform:scale(1); opacity:1}}
+  .bulbrow{display:flex; justify-content:center; gap:7px; margin:10px 0 18px;}
+  .bulbrow i{width:9px;height:9px;border-radius:50%; background:var(--glow); box-shadow:0 0 10px var(--glow); animation:blink 1s infinite;}
+  .bulbrow i:nth-child(2){animation-delay:.15s} .bulbrow i:nth-child(3){animation-delay:.3s}
+  .bulbrow i:nth-child(4){animation-delay:.45s} .bulbrow i:nth-child(5){animation-delay:.6s}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+  .posters2{display:flex; justify-content:center; gap:-10px; margin:6px 0 16px;}
+  .posters2 .mini{width:96px;height:132px;border-radius:14px; box-shadow:0 14px 30px rgba(0,0,0,.5); border:2px solid rgba(255,255,255,.15);
+    display:flex; align-items:flex-end; padding:8px; font-family:'Bricolage Grotesque'; font-weight:700; font-size:13px;}
+  .posters2 .mini:first-child{transform:rotate(-7deg);} .posters2 .mini:last-child{transform:rotate(7deg); margin-left:-18px;}
+  .matchsub{color:var(--mist); font-size:14px; margin:0 0 18px; line-height:1.5;}
+
+  /* ---------- Onboarding ---------- */
+  .intro{position:absolute; inset:0; z-index:60; background:
+      radial-gradient(700px 400px at 50% -5%, #2a1840 0%, transparent 60%), var(--ink);
+    display:flex; flex-direction:column; padding:0;}
+  .introtop{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:30px;}
+  .introart{font-size:64px; margin-bottom:20px; filter:drop-shadow(0 10px 30px rgba(255,194,75,.4));}
+  .intro h1{font-size:36px; line-height:1.02; margin-bottom:14px;}
+  .intro h1 .hl{color:var(--glow);}
+  .intro p{color:var(--mist); font-size:15px; line-height:1.55; max-width:290px;}
+  .dots{display:flex; gap:7px; justify-content:center; margin:22px 0;}
+  .dots i{width:7px;height:7px;border-radius:50%; background:var(--haze);}
+  .dots i.on{background:var(--glow); width:22px; border-radius:999px;}
+  .introfoot{padding:0 24px calc(28px + env(safe-area-inset-bottom));}
+
+  /* QR connect */
+  .qrwrap{display:flex; flex-direction:column; align-items:center; gap:18px;}
+  .qrbox{width:190px;height:190px; background:#fff; border-radius:20px; padding:16px; box-shadow:0 20px 50px rgba(0,0,0,.5);}
+  .code{font-family:'Bricolage Grotesque'; font-weight:800; letter-spacing:.25em; font-size:26px; color:var(--glow);}
+  .connected{display:flex; align-items:center; gap:8px; color:var(--ok); font-weight:700; font-size:15px;
+    background:rgba(91,214,160,.12); padding:10px 16px; border-radius:999px; border:1px solid rgba(91,214,160,.4);}
+
+  /* Guided tour bottom sheet */
+  .tour{position:absolute; left:0; right:0; bottom:0; z-index:55;
+    background:var(--velvet2); border-top:1px solid var(--haze); border-radius:24px 24px 0 0;
+    padding:20px 20px calc(20px + env(safe-area-inset-bottom)); box-shadow:0 -20px 60px rgba(0,0,0,.5);
+    animation:slideup .3s cubic-bezier(.2,.9,.3,1);}
+  @keyframes slideup{from{transform:translateY(100%)}to{transform:translateY(0)}}
+  .tour .step{font-size:11px; font-weight:700; letter-spacing:.1em; color:var(--glow); text-transform:uppercase;}
+  .tour h3{font-size:21px; margin:6px 0 8px;}
+  .tour p{color:#d8cff0; font-size:14px; line-height:1.5; margin:0 0 16px;}
+  .tourfoot{display:flex; align-items:center; gap:10px;}
+  .tourfoot .skip{color:var(--mist); font-size:13px; font-weight:600; margin-right:auto;}
+  .tnext{padding:12px 22px; border-radius:12px; background:var(--glow); color:#1a1200; font-weight:700; font-family:'Bricolage Grotesque';}
+  .tback{padding:12px 16px; border-radius:12px; background:var(--velvet); border:1px solid var(--haze); color:var(--mist); font-weight:600;}
+
+  /* pulsing highlight ring for tour */
+  .pulse{animation:pulse 1.3s infinite; border-radius:14px;}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(255,194,75,.6)}70%{box-shadow:0 0 0 12px rgba(255,194,75,0)}100%{box-shadow:0 0 0 0 rgba(255,194,75,0)}}
+
+  .hint{position:absolute; top:40%; left:50%; transform:translateX(-50%); z-index:5; text-align:center; pointer-events:none;
+    color:var(--mist); font-size:13px; font-weight:600; opacity:.9;}
+  .hand{font-size:34px; display:inline-block; animation:sway 1.6s ease-in-out infinite;}
+  @keyframes sway{0%,100%{transform:translateX(-30px) rotate(-8deg)}50%{transform:translateX(30px) rotate(8deg)}}
+
+  @media (prefers-reduced-motion:reduce){*{animation:none !important; transition:none !important;}}
+</style>
+</head>
+<body>
+<div id="stage"><div id="root"></div></div>
+
+<script type="text/babel" data-presets="react">
+const {useState, useEffect, useRef} = React;
+
+/* ============================= ICONS ============================= */
+const I = {
+  x:(p)=><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" {...p}><path d="M18 6 6 18M6 6l12 12"/></svg>,
+  heart:(p)=><svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" {...p}><path d="M12 21s-7.5-4.6-10-9.3C.4 8.4 1.8 5 5 5c2 0 3.2 1.2 4 2.3C9.8 6.2 11 5 13 5c3.2 0 4.6 3.4 3 6.7C19.5 16.4 12 21 12 21z"/></svg>,
+  star:(p)=><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" {...p}><path d="M12 2l2.9 6.3 6.9.8-5.1 4.7 1.4 6.8L12 17.8 5.9 20.6l1.4-6.8L2.2 9.1l6.9-.8z"/></svg>,
+  starO:(p)=><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" {...p}><path d="M12 2l2.9 6.3 6.9.8-5.1 4.7 1.4 6.8L12 17.8 5.9 20.6l1.4-6.8L2.2 9.1l6.9-.8z"/></svg>,
+  film:(p)=><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" {...p}><rect x="2" y="3" width="20" height="18" rx="3"/><path d="M7 3v18M17 3v18M2 8h5M2 16h5M17 8h5M17 16h5"/></svg>,
+  spark:(p)=><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" {...p}><path d="M12 3v6M12 15v6M3 12h6M15 12h6M5.6 5.6l4.2 4.2M14.2 14.2l4.2 4.2M18.4 5.6l-4.2 4.2M9.8 14.2l-4.2 4.2"/></svg>,
+  list:(p)=><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" {...p}><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>,
+  users:(p)=><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" {...p}><circle cx="9" cy="8" r="3.4"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 5.2A3.4 3.4 0 0 1 16 12M18 20a6.5 6.5 0 0 0-4-6"/></svg>,
+  sliders:(p)=><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" {...p}><path d="M4 6h11M19 6h1M4 12h5M13 12h7M4 18h9M17 18h3"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="14" cy="18" r="2"/></svg>,
+  bell:(p)=><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" {...p}><path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6M10 20a2 2 0 0 0 4 0"/></svg>,
+  check:(p)=><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" {...p}><path d="M4 12l5 5L20 6"/></svg>,
+  play:(p)=><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" {...p}><path d="M6 4l14 8-14 8z"/></svg>,
+  eye:(p)=><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" {...p}><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>,
+  back:(p)=><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" {...p}><path d="M15 5l-7 7 7 7"/></svg>,
+};
+
+/* ============================= DATA ============================= */
+const SERVICES = [
+  {id:'nflx', name:'Netflix', sw:'N', c:'#E50914'},
+  {id:'dnp', name:'Disney+', sw:'D+', c:'#0e6ed6'},
+  {id:'prime', name:'Prime Video', sw:'pv', c:'#1ba7e0'},
+  {id:'max', name:'Max', sw:'M', c:'#7b2ff7'},
+  {id:'hulu', name:'Hulu', sw:'h', c:'#1ce783'},
+  {id:'appl', name:'Apple TV+', sw:'tv', c:'#444'},
+  {id:'ytv', name:'YouTube TV', sw:'▶', c:'#ff0033'},
+];
+const svc = id => SERVICES.find(s=>s.id===id);
+
+const GENRES = ['Action','Comedy','Drama','Horror','Sci-Fi','Thriller','Romance','Animation','Documentary','Fantasy'];
+const MOODS = ['Light','Comfort','Intense','Brain-off','Mind-bending'];
+const DECADES = ['Any','2020s','2010s','2000s','90s','80s & older'];
+
+// posters are CSS gradients — swap for real TMDB images later (see build notes)
+const M = [
+  {id:1, t:'Neon Requiem', y:2023, run:118, g:['Sci-Fi','Thriller'], mood:'Mind-bending', r:8.1, s:'nflx', a:'#5b2a86', b:'#ff5c7a', o:'A memory courier in a rain-soaked megacity discovers the data she carries can rewrite the past.'},
+  {id:2, t:'The Long Way Home', y:2019, run:104, g:['Drama','Romance'], mood:'Comfort', r:7.6, s:'prime', a:'#2b5876', b:'#4e4376', o:'Two strangers share a cross-country train and slowly rebuild the courage to start over.'},
+  {id:3, t:'Grave Shift', y:2022, run:96, g:['Horror','Thriller'], mood:'Intense', r:7.0, s:'max', a:'#1f1c2c', b:'#928dab', o:'The night crew at a shuttered hospital learns why the last shift never clocked out.'},
+  {id:4, t:'Comet Kids', y:2021, run:92, g:['Animation','Fantasy'], mood:'Light', r:8.4, s:'dnp', a:'#f7971e', b:'#ffd200', o:'Three siblings ride a runaway comet across a sky full of impossible islands.'},
+  {id:5, t:'Deadline', y:2024, run:129, g:['Thriller','Drama'], mood:'Intense', r:7.9, s:'nflx', a:'#232526', b:'#e53935', o:'An investigative reporter has one night to prove a verdict was bought before the story dies.'},
+  {id:6, t:'Sunday Roast', y:2018, run:98, g:['Comedy','Drama'], mood:'Comfort', r:7.3, s:'hulu', a:'#e96443', b:'#f9d423', o:'A chaotic family reunion, one disastrous dinner, and a secret nobody wanted served.'},
+  {id:7, t:'Orbit', y:2020, run:141, g:['Sci-Fi','Drama'], mood:'Mind-bending', r:8.0, s:'appl', a:'#0f2027', b:'#2c5364', o:'Stranded above a dying Earth, a lone engineer decides whether humanity deserves rescue.'},
+  {id:8, t:'Loose Ends', y:2023, run:101, g:['Comedy','Romance'], mood:'Light', r:7.1, s:'prime', a:'#ff6a88', b:'#ff99ac', o:'A wedding planner who hates weddings falls for the one groom she can\u2019t plan around.'},
+  {id:9, t:'Undertow', y:2017, run:112, g:['Thriller','Drama'], mood:'Intense', r:7.8, s:'max', a:'#141e30', b:'#243b55', o:'A free-diver returns to the coastal town that blamed her for a drowning she didn\u2019t cause.'},
+  {id:10, t:'Pixel Heart', y:2022, run:88, g:['Animation','Comedy'], mood:'Brain-off', r:7.4, s:'dnp', a:'#8e2de2', b:'#4a00e0', o:'A retired arcade sprite breaks out of his cabinet to find the kid who used to play him.'},
+  {id:11, t:'The Reckoning', y:2016, run:134, g:['Action','Thriller'], mood:'Brain-off', r:7.5, s:'nflx', a:'#3a1c71', b:'#d76d77', o:'A getaway driver takes one last job that turns out to be a trap decades in the making.'},
+  {id:12, t:'Wildflower', y:2021, run:107, g:['Drama','Romance'], mood:'Comfort', r:8.2, s:'hulu', a:'#43cea2', b:'#185a9d', o:'A botanist and a grieving widower plant a garden that outgrows both of their plans.'},
+  {id:13, t:'Static', y:2024, run:99, g:['Horror','Sci-Fi'], mood:'Intense', r:7.2, s:'prime', a:'#000428', b:'#004e92', o:'A radio host starts receiving broadcasts from a town that was wiped off the map in 1998.'},
+  {id:14, t:'Feast', y:2019, run:95, g:['Documentary'], mood:'Light', r:8.6, s:'appl', a:'#f12711', b:'#f5af19', o:'Five street cooks on three continents chase the same impossible perfect bite.'},
+  {id:15, t:'Paper Planes', y:2015, run:90, g:['Comedy','Drama'], mood:'Comfort', r:7.0, s:'dnp', a:'#56ccf2', b:'#2f80ed', o:'A shy kid and a world folding championship teach a burned-out dad how to aim again.'},
+  {id:16, t:'The Hollow', y:2023, run:116, g:['Fantasy','Thriller'], mood:'Mind-bending', r:7.7, s:'max', a:'#42275a', b:'#734b6d', o:'A cartographer maps a forest that rearranges itself around everyone\u2019s worst memory.'},
+  {id:17, t:'Overtime', y:2020, run:103, g:['Action','Comedy'], mood:'Brain-off', r:7.3, s:'nflx', a:'#eb3349', b:'#f45c43', o:'Two mismatched security guards accidentally foil the heist of the century, badly.'},
+  {id:18, t:'Quietly, Now', y:2018, run:120, g:['Drama'], mood:'Comfort', r:8.3, s:'hulu', a:'#334d50', b:'#cbcaa5', o:'A deaf pianist and her hearing brother learn to say goodbye in a language only they share.'},
+  {id:19, t:'Voidwalkers', y:2022, run:145, g:['Sci-Fi','Action'], mood:'Brain-off', r:7.6, s:'prime', a:'#360033', b:'#0b8793', o:'A crew of debt-strapped salvagers boards a derelict ship that doesn\u2019t want to be salvaged.'},
+  {id:20, t:'Marrow', y:2024, run:108, g:['Horror','Drama'], mood:'Intense', r:7.9, s:'max', a:'#2c3e50', b:'#4ca1af', o:'A hospice nurse begins to suspect the house she works in is keeping her patients from leaving.'},
+];
+const movie = id => M.find(m=>m.id===id);
+
+// The simulated friend you connect with in the walkthrough:
+const ALEX = {
+  name:'Alex', avatar:'🎬', overlap:82,
+  wants:[1,5,7,12,16,19],       // both want to watch -> triggers "want" match
+  loved:[9,14,18],              // Alex has seen & loved -> "seen it" triggers rewatch match
+  genres:{'Sci-Fi':90,'Thriller':82,'Drama':68,'Comedy':55,'Horror':28},
+};
+const OTHER_CONNECTIONS = [
+  {name:'Sam', avatar:'🍿', overlap:64, mutual:[6,8,17,15], genres:{'Comedy':88,'Romance':74,'Drama':52,'Action':40,'Horror':18}},
+  {name:'Priya', avatar:'🎭', overlap:48, mutual:[14,18,20], genres:{'Documentary':84,'Drama':70,'Horror':60,'Animation':30,'Comedy':44}},
+];
+
+/* ============================= APP ============================= */
+function App(){
+  const [screen,setScreen] = useState('swipe');     // swipe | filters | matches | watchlist | connections | connDetail
+  const [onboarded,setOnboarded] = useState(false);
+  const [mode,setMode] = useState('live');           // live | async
+  const [services,setServices] = useState(['nflx','dnp','prime','max']);
+  const [filters,setFilters] = useState({genres:[], mood:'', decade:'Any', maxRun:180, dealbreakers:[]});
+  const [swipes,setSwipes] = useState({});           // id -> 'like'|'nope'|'super'|'seen'
+  const [matches,setMatches] = useState([]);         // {id,type:'want'|'rewatch'}
+  const [watchlist,setWatchlist] = useState([]);     // {id,watched,rating}
+  const [matchModal,setMatchModal] = useState(null); // {movie,type}
+  const [activeConn,setActiveConn] = useState(null);
+  const [notif,setNotif] = useState(1);
+  const [connectedTo,setConnectedTo] = useState(null); // name of current partner
+
+  // build the swipe deck from filters + services, excluding already-swiped
+  const deck = M.filter(m=>{
+    if(swipes[m.id]) return false;
+    if(!services.includes(m.s)) return false;
+    if(filters.genres.length && !m.g.some(g=>filters.genres.includes(g))) return false;
+    if(filters.mood && m.mood!==filters.mood) return false;
+    if(filters.maxRun && m.run>filters.maxRun) return false;
+    if(filters.dealbreakers.some(d=>m.g.includes(d))) return false;
+    if(filters.decade!=='Any'){
+      const d = filters.decade;
+      const inDec = (d==='2020s'&&m.y>=2020)||(d==='2010s'&&m.y>=2010&&m.y<2020)||
+                    (d==='2000s'&&m.y>=2000&&m.y<2010)||(d==='90s'&&m.y>=1990&&m.y<2000)||
+                    (d==='80s & older'&&m.y<1990);
+      if(!inDec) return false;
+    }
+    return true;
+  });
+
+  function handleSwipe(m, dir){
+    // dir: 'like' | 'nope' | 'super' | 'seen'
+    setSwipes(s=>({...s,[m.id]:dir}));
+    const partner = connectedTo || 'Alex';
+    if(partner==='Alex'){
+      if((dir==='like'||dir==='super') && ALEX.wants.includes(m.id)){
+        registerMatch(m,'want');
+      } else if(dir==='seen' && ALEX.loved.includes(m.id)){
+        registerMatch(m,'rewatch');
+      }
+    }
+  }
+  function registerMatch(m,type){
+    setMatches(x=> x.find(i=>i.id===m.id)? x : [...x,{id:m.id,type}]);
+    setWatchlist(x=> x.find(i=>i.id===m.id)? x : [...x,{id:m.id,watched:false,rating:0}]);
+    setMatchModal({movie:m,type});
+    setNotif(n=>n+1);
+  }
+
+  if(!onboarded){
+    return <Onboarding
+      services={services} setServices={setServices}
+      filters={filters} setFilters={setFilters}
+      mode={mode} setMode={setMode}
+      onConnect={(name)=>setConnectedTo(name)}
+      onDone={()=>{setOnboarded(true); setScreen('swipe');}}
+      goScreen={setScreen}
+    />;
+  }
+
+  return (
+    <div className="app">
+      <TopBar mode={mode} setMode={setMode} notif={notif} partner={connectedTo}
+        onBell={()=>{setScreen('matches'); setNotif(0);}}
+        onFilter={()=>setScreen('filters')} />
+
+      {screen==='swipe' && <SwipeScreen deck={deck} onSwipe={handleSwipe} swipes={swipes}
+        onOpenFilters={()=>setScreen('filters')} partner={connectedTo} />}
+      {screen==='filters' && <FiltersScreen filters={filters} setFilters={setFilters}
+        services={services} setServices={setServices} onDone={()=>setScreen('swipe')} />}
+      {screen==='matches' && <MatchesScreen matches={matches} onGo={()=>setScreen('swipe')} />}
+      {screen==='watchlist' && <WatchlistScreen watchlist={watchlist} setWatchlist={setWatchlist} onGo={()=>setScreen('swipe')} />}
+      {screen==='connections' && <ConnectionsScreen matches={matches}
+        onOpen={(c)=>{setActiveConn(c); setScreen('connDetail');}} partner={connectedTo}/>}
+      {screen==='connDetail' && <ConnectionDetail conn={activeConn} onBack={()=>setScreen('connections')} />}
+
+      {screen!=='filters' && screen!=='connDetail' &&
+        <BottomNav screen={screen} setScreen={setScreen} notif={notif} setNotif={setNotif} />}
+
+      {matchModal && <MatchModal data={matchModal} partner={connectedTo}
+        onClose={()=>setMatchModal(null)} onList={()=>{setMatchModal(null); setScreen('watchlist');}} />}
+    </div>
+  );
+}
+
+/* ============================= TOP BAR ============================= */
+function TopBar({mode,setMode,notif,onBell,partner}){
+  return (
+    <div className="topbar">
+      <div className="brand"><span className="dot"></span>ReelMatch</div>
+      <div className="topbtns">
+        <button className="modechip" onClick={()=>setMode(mode==='live'?'async':'live')}>
+          <span className={mode==='live'?'live':'async'}></span>{mode==='live'?'Same room':'Anytime'}
+        </button>
+        <button className="iconbtn" onClick={onBell}>
+          <I.bell/>{notif>0 && <span className="badge">{notif}</span>}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ============================= SWIPE SCREEN ============================= */
+function SwipeScreen({deck,onSwipe,onOpenFilters,partner}){
+  const [showHint,setShowHint] = useState(true);
+  useEffect(()=>{ const t=setTimeout(()=>setShowHint(false),3200); return ()=>clearTimeout(t); },[]);
+  const top = deck[0];
+
+  return (
+    <>
+      <div className="screen" style={{overflow:'hidden'}}>
+        <div className="deck">
+          {deck.length===0 &&
+            <div className="empty">
+              <div className="film">🎞️</div>
+              <h2>That's the reel</h2>
+              <p>You've swiped everything that fits. Loosen a filter or add a service to line up more.</p>
+              <button className="textbtn" onClick={onOpenFilters}>Adjust filters →</button>
+            </div>}
+          {deck.slice(0,3).reverse().map((m,i,arr)=>{
+            const depth = arr.length-1-i; // 0 = top
+            return <Card key={m.id} m={m} depth={depth}
+              onSwipe={onSwipe} isTop={depth===0} partner={partner}/>;
+          })}
+          {top && showHint &&
+            <div className="hint"><div className="hand">👆</div><div>Swipe right for yes, left for pass</div></div>}
+        </div>
+      </div>
+      {top && <ActionBar m={top} onSwipe={onSwipe}/>}
+    </>
+  );
+}
+
+function Card({m,depth,onSwipe,isTop,partner}){
+  const ref = useRef(null);
+  const [drag,setDrag] = useState({x:0,y:0,active:false});
+  const [expanded,setExpanded] = useState(false);
+  const [seen,setSeen] = useState(false);
+  const start = useRef({x:0,y:0});
+
+  const down = e=>{ if(!isTop) return; start.current={x:e.clientX,y:e.clientY}; setDrag(d=>({...d,active:true})); ref.current.setPointerCapture(e.pointerId); };
+  const move = e=>{ if(!drag.active) return; setDrag({x:e.clientX-start.current.x, y:e.clientY-start.current.y, active:true}); };
+  const up = e=>{
+    if(!drag.active) return;
+    const {x,y}=drag;
+    if(y<-120 && Math.abs(x)<90){ fly(0,-800); setTimeout(()=>onSwipe(m,'super'),180); return; }
+    if(x>120){ fly(800,y); setTimeout(()=>onSwipe(m,'like'),180); return; }
+    if(x<-120){ fly(-800,y); setTimeout(()=>onSwipe(m,'nope'),180); return; }
+    setDrag({x:0,y:0,active:false});
+  };
+  const fly = (x,y)=> setDrag({x,y,active:false,flung:true});
+
+  const rot = drag.x/18;
+  const yesOp = Math.max(0, Math.min(1, drag.x/120));
+  const noOp = Math.max(0, Math.min(1, -drag.x/120));
+  const supOp = Math.max(0, Math.min(1, -drag.y/120)) * (Math.abs(drag.x)<90?1:0);
+
+  const style = {
+    transform:`translate(${drag.x}px, ${drag.y}px) rotate(${rot}deg) scale(${1-depth*0.04})`,
+    transition: drag.active? 'none':'transform .35s cubic-bezier(.2,.9,.3,1)',
+    opacity: 1-depth*0.15,
+    zIndex: 10-depth,
+    pointerEvents: isTop?'auto':'none',
+  };
+
+  return (
+    <div ref={ref} className={"card"+(expanded?' expanded':'')} style={style}
+      onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up}>
+      <div className="poster" style={{background:`linear-gradient(150deg, ${m.a}, ${m.b})`}}></div>
+      <div className="grain"></div>
+      <div className="postertitle">{m.t}</div>
+      <div className="glowedge" style={{opacity:yesOp*0.9}}></div>
+
+      <div className="stamp yes" style={{opacity:yesOp}}>Yes</div>
+      <div className="stamp no" style={{opacity:noOp}}>Pass</div>
+      <div className="stamp sup" style={{opacity:supOp}}>★ Must see</div>
+
+      <button className={"seenpill"+(seen?' on':'')}
+        onPointerDown={e=>e.stopPropagation()}
+        onClick={()=>{ setSeen(true); onSwipe(m,'seen'); }}>
+        <I.eye/> {seen?'Seen it':'I\u2019ve seen this'}
+      </button>
+
+      <div className="cardbody" onClick={()=>setExpanded(x=>!x)}>
+        <div className="chips">
+          <span className="chip svc">{svc(m.s)?.name}</span>
+          {m.g.slice(0,2).map(g=><span key={g} className="chip">{g}</span>)}
+          <span className="chip">{m.mood}</span>
+        </div>
+        <h2>{m.t}</h2>
+        <div className="meta">
+          <span className="rate">★ {m.r.toFixed(1)}</span>
+          <span>{m.y}</span><span>·</span><span>{m.run} min</span>
+          <span style={{marginLeft:'auto',display:'flex',alignItems:'center',gap:5,color:'var(--glow)'}}><I.play/> Trailer</span>
+        </div>
+        <div className="why"><I.spark style={{width:14,height:14}}/> On {svc(m.s)?.name} · matches your {m.g[0]} pick</div>
+        <div className="overview">{m.o}</div>
+      </div>
+    </div>
+  );
+}
+
+function ActionBar({m,onSwipe}){
+  return (
+    <div className="actions">
+      <button className="bulb nope" onClick={()=>onSwipe(m,'nope')} aria-label="Pass"><I.x/></button>
+      <button className="bulb sm seen" onClick={()=>onSwipe(m,'seen')} aria-label="Seen it"><I.eye/></button>
+      <button className="bulb like" onClick={()=>onSwipe(m,'like')} aria-label="Yes"><I.heart/></button>
+      <button className="bulb sm super" onClick={()=>onSwipe(m,'super')} aria-label="Must see"><I.star/></button>
+    </div>
+  );
+}
+
+/* ============================= FILTERS ============================= */
+function FiltersScreen({filters,setFilters,services,setServices,onDone}){
+  const tg = (key,val)=> setFilters(f=>({...f,[key]: f[key].includes(val)? f[key].filter(x=>x!==val):[...f[key],val]}));
+  return (
+    <div className="screen"><div className="pad">
+      <div className="head"><h1>Set the vibe</h1><p>Only titles on your services get queued. Everything here is optional.</p></div>
+
+      <div className="sectiontitle">Your services</div>
+      <div className="svcgrid">
+        {SERVICES.map(s=>{ const on=services.includes(s.id); return (
+          <button key={s.id} className={"svccard"+(on?' on':'')}
+            onClick={()=>setServices(v=> on? v.filter(x=>x!==s.id):[...v,s.id])}>
+            <span className="sw" style={{background:s.c}}>{s.sw}</span>{s.name}
+            <span className="tick"><I.check/></span>
+          </button>);})}
+      </div>
+
+      <div className="sectiontitle">Genres you're feeling</div>
+      <div className="grid">
+        {GENRES.map(g=><button key={g} className={"selchip"+(filters.genres.includes(g)?' on':'')} onClick={()=>tg('genres',g)}>{g}</button>)}
+      </div>
+
+      <div className="sectiontitle">Mood</div>
+      <div className="grid">
+        {MOODS.map(mo=><button key={mo} className={"selchip"+(filters.mood===mo?' on':'')}
+          onClick={()=>setFilters(f=>({...f,mood: f.mood===mo?'':mo}))}>{mo}</button>)}
+      </div>
+
+      <div className="sectiontitle">Time period</div>
+      <div className="grid">
+        {DECADES.map(d=><button key={d} className={"selchip"+(filters.decade===d?' on':'')}
+          onClick={()=>setFilters(f=>({...f,decade:d}))}>{d}</button>)}
+      </div>
+
+      <div className="sectiontitle">How long tonight? · up to {filters.maxRun} min</div>
+      <input className="slider" type="range" min="60" max="180" step="5" value={filters.maxRun}
+        onChange={e=>setFilters(f=>({...f,maxRun:+e.target.value}))}/>
+      <div style={{display:'flex',justifyContent:'space-between',fontSize:12,color:'var(--mist)'}}><span>1 hr</span><span>3 hr</span></div>
+
+      <div className="sectiontitle">Dealbreakers · never show these</div>
+      <div className="grid">
+        {GENRES.map(g=><button key={g} className={"selchip danger"+(filters.dealbreakers.includes(g)?' on':'')} onClick={()=>tg('dealbreakers',g)}>{g}</button>)}
+      </div>
+
+      <button className="cta" onClick={onDone}>Show me the queue</button>
+    </div></div>
+  );
+}
+
+/* ============================= MATCHES ============================= */
+function MatchesScreen({matches,onGo}){
+  return (
+    <div className="screen"><div className="pad">
+      <div className="head"><h1>Matches</h1><p>Titles you both said yes to. Pick one and press play.</p></div>
+      {matches.length===0 &&
+        <div style={{textAlign:'center',padding:'50px 20px',color:'var(--mist)'}}>
+          <div style={{fontSize:38}}>✨</div>
+          <p style={{fontWeight:600,marginTop:10}}>No matches yet</p>
+          <p style={{fontSize:13}}>Keep swiping — when you and your partner both like the same film, it lands here.</p>
+          <button className="textbtn" onClick={onGo}>Back to swiping →</button>
+        </div>}
+      {matches.map(({id,type})=>{ const m=movie(id); return (
+        <div className="row" key={id}>
+          <div className="thumb" style={{background:`linear-gradient(150deg,${m.a},${m.b})`}}><div className="t"></div></div>
+          <div className="rowmain">
+            <div className="tt">{m.t}</div>
+            <div className="sub">{svc(m.s)?.name} · {m.run} min · ★ {m.r.toFixed(1)}</div>
+          </div>
+          <span className={"tag "+(type==='rewatch'?'rewatch':'want')}>{type==='rewatch'?'Rewatch':'Both want'}</span>
+        </div>);})}
+    </div></div>
+  );
+}
+
+/* ============================= WATCHLIST ============================= */
+function WatchlistScreen({watchlist,setWatchlist,onGo}){
+  const setRating=(id,r)=>setWatchlist(w=>w.map(i=>i.id===id?{...i,rating:r}:i));
+  const toggle=(id)=>setWatchlist(w=>w.map(i=>i.id===id?{...i,watched:!i.watched}:i));
+  return (
+    <div className="screen"><div className="pad">
+      <div className="head"><h1>Shared watchlist</h1><p>Every match lands here. Mark what you've watched and rate it together.</p></div>
+      {watchlist.length===0 &&
+        <div style={{textAlign:'center',padding:'50px 20px',color:'var(--mist)'}}>
+          <div style={{fontSize:38}}>🍿</div>
+          <p style={{fontWeight:600,marginTop:10}}>Nothing saved yet</p>
+          <p style={{fontSize:13}}>Your matches build this list automatically.</p>
+          <button className="textbtn" onClick={onGo}>Start swiping →</button>
+        </div>}
+      {watchlist.map(({id,watched,rating})=>{ const m=movie(id); return (
+        <div className="row" key={id} style={{alignItems:'flex-start'}}>
+          <div className="thumb" style={{background:`linear-gradient(150deg,${m.a},${m.b})`,opacity:watched?.5:1}}></div>
+          <div className="rowmain">
+            <div className="tt">{m.t}</div>
+            <div className="sub">{svc(m.s)?.name} · {m.run} min</div>
+            <div style={{display:'flex',alignItems:'center',gap:10,marginTop:8}}>
+              <div className="stars">
+                {[1,2,3,4,5].map(n=><span key={n} onClick={()=>setRating(id,n)} style={{color:n<=rating?'var(--glow)':'var(--haze)'}}>
+                  {n<=rating? <I.star style={{width:18,height:18}}/> : <I.starO/>}</span>)}
+              </div>
+              <button className={"watchtoggle"+(watched?' on':'')} onClick={()=>toggle(id)}>
+                {watched?'✓ Watched':'Mark watched'}</button>
+            </div>
+          </div>
+        </div>);})}
+    </div></div>
+  );
+}
+
+/* ============================= CONNECTIONS ============================= */
+function ConnectionsScreen({matches,onOpen,partner}){
+  const you = {name: partner||'Alex', avatar:ALEX.avatar, overlap:ALEX.overlap, genres:ALEX.genres,
+    mutual: matches.map(x=>x.id).length? matches.map(x=>x.id) : ALEX.wants.slice(0,3)};
+  const list = [you, ...OTHER_CONNECTIONS];
+  return (
+    <div className="screen"><div className="pad">
+      <div className="head"><h1>Your people</h1><p>Open anyone to revisit what you both love — no new session needed.</p></div>
+      {list.map((c,i)=>(
+        <button key={i} className="row" style={{width:'100%',textAlign:'left'}} onClick={()=>onOpen(c)}>
+          <div className="thumb" style={{background:'var(--velvet2)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:26,width:52,height:52,borderRadius:14}}>{c.avatar}</div>
+          <div className="rowmain">
+            <div className="tt">{c.name}{i===0 && <span style={{color:'var(--ok)',fontSize:12,fontWeight:600}}> · connected</span>}</div>
+            <div className="sub">{c.mutual.length} shared picks</div>
+          </div>
+          <div style={{textAlign:'right'}}>
+            <div style={{fontFamily:'Bricolage Grotesque',fontWeight:800,fontSize:20,color:'var(--glow)'}}>{c.overlap}%</div>
+            <div style={{fontSize:10,color:'var(--mist)'}}>in sync</div>
+          </div>
+        </button>
+      ))}
+    </div></div>
+  );
+}
+
+function ConnectionDetail({conn,onBack}){
+  if(!conn) return null;
+  const genres = Object.entries(conn.genres).sort((a,b)=>b[1]-a[1]);
+  return (
+    <div className="screen"><div className="pad">
+      <button className="iconbtn" onClick={onBack} style={{marginBottom:12}}><I.back/></button>
+      <div style={{display:'flex',alignItems:'center',gap:14,marginBottom:6}}>
+        <div style={{width:60,height:60,borderRadius:18,background:'var(--velvet2)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:30}}>{conn.avatar}</div>
+        <div>
+          <h1 style={{fontSize:26}}>{conn.name}</h1>
+          <p style={{color:'var(--mist)',fontSize:14,margin:'2px 0 0'}}>{conn.overlap}% taste overlap</p>
+        </div>
+      </div>
+
+      <div className="sectiontitle">Where your taste lines up</div>
+      {genres.map(([g,v])=>(
+        <div key={g} style={{marginBottom:11}}>
+          <div style={{display:'flex',justifyContent:'space-between',fontSize:13,marginBottom:5}}><span>{g}</span><span className="muted">{v}%</span></div>
+          <div style={{height:8,borderRadius:999,background:'var(--haze)'}}>
+            <div style={{height:'100%',width:v+'%',borderRadius:999,background:'linear-gradient(90deg,var(--glow),var(--rose))'}}></div>
+          </div>
+        </div>
+      ))}
+
+      <div className="sectiontitle">You both love</div>
+      {conn.mutual.map(id=>{ const m=movie(id); if(!m) return null; return (
+        <div className="row" key={id}>
+          <div className="thumb" style={{background:`linear-gradient(150deg,${m.a},${m.b})`}}></div>
+          <div className="rowmain"><div className="tt">{m.t}</div><div className="sub">{svc(m.s)?.name} · {m.g.join(', ')}</div></div>
+        </div>);})}
+    </div></div>
+  );
+}
+
+/* ============================= BOTTOM NAV ============================= */
+function BottomNav({screen,setScreen,notif,setNotif}){
+  const items=[
+    {id:'swipe',label:'Swipe',icon:<I.film/>},
+    {id:'matches',label:'Matches',icon:<I.spark/>,dot:notif>0},
+    {id:'watchlist',label:'Watchlist',icon:<I.list/>},
+    {id:'connections',label:'People',icon:<I.users/>},
+  ];
+  return (
+    <div className="nav">
+      {items.map(it=>(
+        <button key={it.id} className={"navbtn"+(screen===it.id?' active':'')}
+          onClick={()=>{ setScreen(it.id); if(it.id==='matches') setNotif(0); }}>
+          {it.dot && <span className="nb"></span>}{it.icon}{it.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/* ============================= MATCH MODAL ============================= */
+function MatchModal({data,partner,onClose,onList}){
+  const {movie:m,type}=data;
+  const rw = type==='rewatch';
+  return (
+    <div className="overlay" onClick={onClose}>
+      <div className="matchcard" onClick={e=>e.stopPropagation()}>
+        <div className="bulbrow"><i></i><i></i><i></i><i></i><i></i></div>
+        <div className={"marquee"+(rw?' rw':'')}>{rw?'REWATCH NIGHT':'IT\u2019S A MATCH'}</div>
+        <div className="bulbrow"><i></i><i></i><i></i><i></i><i></i></div>
+        <div className="posters2">
+          <div className="mini" style={{background:`linear-gradient(150deg,${m.a},${m.b})`}}>{m.t}</div>
+          <div className="mini" style={{background:'var(--velvet2)',justifyContent:'center',fontSize:30,alignItems:'center'}}>{ALEX.avatar}</div>
+        </div>
+        <p className="matchsub">
+          {rw ? `You and ${partner||'Alex'} have both seen ` : `You and ${partner||'Alex'} both want to watch `}
+          <b style={{color:'var(--text)'}}>{m.t}</b>{rw?' — and loved it.':'.'} It's streaming on {svc(m.s)?.name}.
+        </p>
+        <button className="cta" onClick={onList}>Add to watchlist</button>
+        <button className="ghostcta" onClick={onClose}>Keep swiping</button>
+      </div>
+    </div>
+  );
+}
+
+/* ============================= ONBOARDING + GUIDED TOUR ============================= */
+function Onboarding({services,setServices,filters,setFilters,mode,setMode,onConnect,onDone,goScreen}){
+  // phase: 'intro' (slides) -> 'tour' (guided across real screens)
+  const [phase,setPhase]=useState('intro');
+  const [slide,setSlide]=useState(0);
+  const [tour,setTour]=useState(0);
+  const [connected,setConnected]=useState(false);
+
+  const slides=[
+    {art:'🎬', h:<>Never argue about <span className="hl">what to watch</span> again</>,
+     p:'ReelMatch is a two-player game. You each swipe through movies on the services you already pay for. When you both say yes — it\u2019s a match.'},
+    {art:'👉👈', h:<>Swipe together, <span className="hl">match instantly</span></>,
+     p:'Right for yes, left for pass, up for a must-see. The moment your picks line up, both of you get the same lit-up match.'},
+    {art:'🍿', h:<>Built around <span className="hl">your</span> subscriptions</>,
+     p:'Tell us which services you have. Every title in your queue is something one of you can actually press play on tonight.'},
+  ];
+
+  // Guided tour steps — each drives the real screen behind the sheet
+  const steps=[
+    {screen:'connect', tag:'Step 1 of 6', h:'Connect with a friend',
+     p:'Have your friend scan this code, or share the room code. We\u2019ll link your two queues so a match needs a yes from both of you. Tap Connect to try it.'},
+    {screen:'filters', tag:'Step 2 of 6', h:'Pick your services',
+     p:'Check off everything you subscribe to. We only ever queue titles that are streaming on one of these — no dead ends.'},
+    {screen:'filters', tag:'Step 3 of 6', h:'Set the vibe',
+     p:'Optional filters shape the queue: genre, mood, time period, how long you\u2019ve got tonight, and dealbreakers you never want to see.'},
+    {screen:'swipe', tag:'Step 4 of 6', h:'Swipe the queue',
+     p:'Right = yes, left = pass, up = must-see. Already seen it? Tap “I\u2019ve seen this” — if your friend loved it too, you\u2019ll get a rewatch match.'},
+    {screen:'matches', tag:'Step 5 of 6', h:'Matches & watchlist',
+     p:'Every match lights up for both of you and drops into a shared watchlist. Mark things watched and rate them together afterward.'},
+    {screen:'connections', tag:'Step 6 of 6', h:'Your people',
+     p:'Come back anytime to open a past connection and see everything you two love — no new session needed. That\u2019s it. Ready?'},
+  ];
+
+  useEffect(()=>{ if(phase==='tour') goScreen(steps[tour].screen); },[phase,tour]);
+
+  if(phase==='intro'){
+    const s=slides[slide];
+    return (
+      <div className="intro">
+        <div className="introtop">
+          <div className="introart">{s.art}</div>
+          <h1>{s.h}</h1>
+          <p>{s.p}</p>
+          <div className="dots">{slides.map((_,i)=><i key={i} className={i===slide?'on':''}></i>)}</div>
+        </div>
+        <div className="introfoot">
+          <button className="cta" onClick={()=> slide<slides.length-1? setSlide(slide+1):setPhase('tour')}>
+            {slide<slides.length-1?'Next':'Show me how it works'}</button>
+          {slide<slides.length-1 && <button className="ghostcta" onClick={()=>setPhase('tour')}>Skip intro</button>}
+        </div>
+      </div>
+    );
+  }
+
+  // TOUR phase: render a faux app frame behind the sheet
+  const st=steps[tour];
+  return (
+    <div className="app">
+      <TopBar mode={mode} setMode={setMode} notif={1} partner={connected?'Alex':null} onBell={()=>{}} onFilter={()=>{}}/>
+      {/* behind-the-sheet content mirrors the real screen being explained */}
+      {st.screen==='connect' && <ConnectPane connected={connected} onConnect={()=>{ setConnected(true); onConnect('Alex'); }}/>}
+      {st.screen==='filters' && <FiltersScreen filters={filters} setFilters={setFilters} services={services} setServices={setServices} onDone={()=>{}}/>}
+      {st.screen==='swipe' && <SwipeScreen deck={M.slice(0,3)} onSwipe={()=>{}} onOpenFilters={()=>{}} partner="Alex"/>}
+      {st.screen==='matches' && <MatchesScreen matches={[{id:1,type:'want'},{id:7,type:'want'}]} onGo={()=>{}}/>}
+      {st.screen==='connections' && <ConnectionsScreen matches={[{id:1}]} onOpen={()=>{}} partner="Alex"/>}
+
+      <BottomNav screen={st.screen==='connect'?'swipe':st.screen} setScreen={()=>{}} notif={1} setNotif={()=>{}}/>
+
+      <div className="tour">
+        <div className="step">{st.tag}</div>
+        <h3>{st.h}</h3>
+        <p>{st.p}</p>
+        <div className="tourfoot">
+          <button className="skip" onClick={onDone}>Skip tour</button>
+          {tour>0 && <button className="tback" onClick={()=>setTour(tour-1)}>Back</button>}
+          <button className="tnext" onClick={()=> tour<steps.length-1? setTour(tour+1):onDone()}>
+            {tour<steps.length-1?'Next':'Start swiping'}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ConnectPane({connected,onConnect}){
+  return (
+    <div className="screen"><div className="pad">
+      <div className="head"><h1>Connect</h1><p>One quick link and your queues are paired.</p></div>
+      <div className="qrwrap" style={{marginTop:24}}>
+        <div className="qrbox"><QR/></div>
+        <div className="muted" style={{fontSize:13}}>or share room code</div>
+        <div className="code">RM-4K7Q</div>
+        {!connected
+          ? <button className="cta" style={{maxWidth:220}} onClick={onConnect}>Connect with a friend</button>
+          : <div className="connected"><I.check/> Connected with Alex</div>}
+      </div>
+    </div></div>
+  );
+}
+
+// tiny deterministic QR-looking grid (decorative)
+function QR(){
+  const cells=[]; const n=11;
+  const seed=[0,2,4,6,8,10,12,14,16,18,20,23,25,27,29,31,34,36,40,44,48,52,56,60,64,68,72,76,80,84,88,92,96,100,104,108,112,116,120];
+  for(let i=0;i<n*n;i++){ const on = (i%3===0)||(i%7===0)||seed.includes(i)|| (i<n)||(i%n===0); cells.push(on); }
+  // corner finder squares
+  return (
+    <svg viewBox="0 0 110 110" width="100%" height="100%">
+      {cells.map((c,i)=> c && <rect key={i} x={(i%n)*10} y={Math.floor(i/n)*10} width="9" height="9" rx="1.5" fill="#14101F"/>) }
+      {[[0,0],[80,0],[0,80]].map(([x,y],k)=>(
+        <g key={k}><rect x={x} y={y} width="30" height="30" rx="6" fill="none" stroke="#14101F" strokeWidth="5"/>
+        <rect x={x+10} y={y+10} width="10" height="10" rx="2" fill="#FFC24B"/></g>))}
+    </svg>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
