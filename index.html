@@ -10,6 +10,9 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.7/babel.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
 <style>
   :root{
     --ink:#14101F; --velvet:#211A33; --velvet2:#291F40; --haze:#372B52;
@@ -295,7 +298,7 @@ const I = {
    Get your token: themoviedb.org → Settings → API → "API Read Access Token"
    Leave it as-is and the app keeps running on the built-in demo titles.
    ===================================================================== */
-const TMDB_TOKEN = "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJiOGIzZDRlM2FlMWNkMzZmOWU0Y2ZjZDI5YTNhZWExYSIsIm5iZiI6MTc4NDY4NTc4OC45MDEsInN1YiI6IjZhNjAyNGRjMWJkZTRlMjM4YzcxODE0MiIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.PpKsH5sxi8SJQ0-LveFLM991_Cod0J1J7yZmZC79NKg";
+const TMDB_TOKEN = "PASTE_YOUR_V4_READ_ACCESS_TOKEN_HERE";
 const REGION = "US";   // change if you're not in the US
 
 const TMDB_ON = !TMDB_TOKEN.startsWith("PASTE_");
@@ -355,6 +358,59 @@ async function fetchDeck({services, filters, page=1}){
   }));
 }
 
+/* =====================================================================
+   FIREBASE SETUP — paste the config object from your Firebase console.
+   Project settings → Your apps → Web app → SDK setup → Config.
+   Leave it as-is and the app runs solo with no sign-in (demo mode).
+   ===================================================================== */
+const FIREBASE_CONFIG = {
+  apiKey: "PASTE_FIREBASE_API_KEY",
+  authDomain: "PASTE.firebaseapp.com",
+  projectId: "PASTE_PROJECT_ID",
+  storageBucket: "PASTE.appspot.com",
+  messagingSenderId: "PASTE_SENDER_ID",
+  appId: "PASTE_APP_ID"
+};
+
+const FB_ON = !FIREBASE_CONFIG.apiKey.startsWith("PASTE_") && typeof firebase !== "undefined";
+let auth=null, db=null;
+if(FB_ON){
+  firebase.initializeApp(FIREBASE_CONFIG);
+  auth = firebase.auth();
+  db = firebase.firestore();
+}
+
+const signIn = () => auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
+const signOutNow = () => auth.signOut();
+
+// Room codes skip look-alike characters so they're easy to read aloud.
+const ALPHA = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+const newCode = () => Array.from({length:5},()=>ALPHA[Math.floor(Math.random()*ALPHA.length)]).join('');
+
+async function createSession(uid,name){
+  const code = newCode();
+  await db.collection('sessions').doc(code).set({
+    host:uid, createdAt:Date.now(),
+    members:{[uid]:{name:name||'Someone', joinedAt:Date.now()}}
+  });
+  return code;
+}
+async function joinSession(raw,uid,name){
+  const code = (raw||'').trim().toUpperCase();
+  const ref = db.collection('sessions').doc(code);
+  const snap = await ref.get();
+  if(!snap.exists) throw new Error('No session with that code');
+  await ref.update({['members.'+uid]:{name:name||'Someone', joinedAt:Date.now()}});
+  return code;
+}
+function recordSwipe(code,uid,m,dir){
+  // Title/poster are stored alongside so every phone can render the match.
+  return db.collection('sessions').doc(code).collection('swipes').doc(uid+'_'+m.id).set({
+    uid, movieId:m.id, dir, title:m.t, poster:m.poster||null,
+    service:(m.providers&&m.providers[0])||null, ts:Date.now()
+  });
+}
+
 // One extra call per card gives us runtime + which service it's actually on.
 async function enrich(m){
   if(m._full) return m;
@@ -411,10 +467,17 @@ const OTHER_CONNECTIONS = [
 ];
 
 /* ============================= APP ============================= */
-function App(){
-  const [screen,setScreen] = useState('swipe');     // swipe | filters | matches | watchlist | connections | connDetail
-  const [onboarded,setOnboarded] = useState(false);
-  const [mode,setMode] = useState('live');           // live | async
+function App({user,profile,saveProfile,demo}){
+  const [screen,setScreen] = useState('swipe');
+  const [localOnboarded,setLocalOnboarded] = useState(false);
+  const onboarded = demo ? localOnboarded : !!(profile && profile.onboarded);
+  const setOnboarded = v => { setLocalOnboarded(v); if(!demo) saveProfile({onboarded:v}); };
+
+  // A session is a shared room. Same-room and anytime use the identical model.
+  const [session,setSession] = useState(null);       // room code
+  const [members,setMembers] = useState({});
+  const [allSwipes,setAllSwipes] = useState([]);
+  const [seenMatches,setSeenMatches] = useState({});
   const [services,setServices] = useState(['nflx','dnp','prime','max']);
   const [filters,setFilters] = useState({genres:[], mood:'', decade:'Any', maxRun:180, dealbreakers:[]});
   const [swipes,setSwipes] = useState({});           // id -> 'like'|'nope'|'super'|'seen'
@@ -466,9 +529,53 @@ function App(){
     return true;
   });
 
+  // Live sync: everyone in the room sees the same swipes and matches.
+  useEffect(()=>{
+    if(demo || !session) return;
+    const ref = db.collection('sessions').doc(session);
+    const offA = ref.onSnapshot(d=> setMembers((d.data()||{}).members||{}) );
+    const offB = ref.collection('swipes').onSnapshot(snap=>
+      setAllSwipes(snap.docs.map(d=>d.data())) );
+    return ()=>{ offA(); offB(); };
+  },[session,demo]);
+
+  // A match = every member of the room said yes to the same title.
+  useEffect(()=>{
+    if(demo || !session) return;
+    const ids = Object.keys(members);
+    if(ids.length < 2) return;
+    const byMovie = {};
+    allSwipes.forEach(sw=>{ (byMovie[sw.movieId] = byMovie[sw.movieId] || []).push(sw); });
+    Object.entries(byMovie).forEach(([mid,list])=>{
+      const yes = list.filter(x=>x.dir==='like'||x.dir==='super');
+      const seen = list.filter(x=>x.dir==='seen');
+      const all = yes.length===ids.length;
+      const rewatch = seen.length>0 && (yes.length+seen.length)===ids.length && seen.length===ids.length;
+      if((all||rewatch) && !seenMatches[mid]){
+        const any = list[0];
+        const m = movie(Number(mid)) || {id:Number(mid), t:any.title, poster:any.poster,
+                    providers:any.service?[any.service]:[], a:'#2b2140', b:'#4a3a6b', g:[], r:0};
+        REG[m.id] = m;
+        setSeenMatches(p=>({...p,[mid]:true}));
+        setMatches(x=> x.find(i=>i.id===m.id)? x : [...x,{id:m.id,type:rewatch?'rewatch':'want'}]);
+        setWatchlist(x=> x.find(i=>i.id===m.id)? x : [...x,{id:m.id,watched:false,rating:0}]);
+        setMatchModal({movie:m,type:rewatch?'rewatch':'want'});
+        setNotif(n=>n+1);
+      }
+    });
+  },[allSwipes,members,session,demo]);
+
+  // How many people in the room have said yes to the top card so far.
+  const yesCount = m => {
+    if(demo||!session||!m) return null;
+    const list = allSwipes.filter(s=>s.movieId===m.id && (s.dir==='like'||s.dir==='super'));
+    return {yes:list.length, total:Math.max(1,Object.keys(members).length)};
+  };
+
   function handleSwipe(m, dir){
     // dir: 'like' | 'nope' | 'super' | 'seen'
     setSwipes(s=>({...s,[m.id]:dir}));
+    if(!demo && session){ recordSwipe(session,user.uid,m,dir).catch(e=>console.error(e)); return; }
     const partner = connectedTo || 'Alex';
     // Stand-in for a real partner until Firebase is wired up.
     // With live TMDB ids we fake Alex's taste so the match moment still demos.
@@ -480,6 +587,27 @@ function App(){
       else if(dir==='seen' && loved) registerMatch(m,'rewatch');
     }
   }
+  const [sessBusy,setSessBusy] = useState(false);
+  const [sessErr,setSessErr] = useState(null);
+
+  const doCreate = async ()=>{
+    setSessBusy(true); setSessErr(null);
+    try{ setSession(await createSession(user.uid, user.displayName||user.email)); }
+    catch(e){ setSessErr(e.message); } finally{ setSessBusy(false); }
+  };
+  const doJoin = async code=>{
+    setSessBusy(true); setSessErr(null);
+    try{ setSession(await joinSession(code, user.uid, user.displayName||user.email)); }
+    catch(e){ setSessErr(e.message); } finally{ setSessBusy(false); }
+  };
+
+  // Someone opened a ?join=CODE link.
+  useEffect(()=>{
+    if(demo || !user || session) return;
+    const code = new URLSearchParams(location.search).get('join');
+    if(code) doJoin(code);
+  },[user,demo]);
+
   function registerMatch(m,type){
     setMatches(x=> x.find(i=>i.id===m.id)? x : [...x,{id:m.id,type}]);
     setWatchlist(x=> x.find(i=>i.id===m.id)? x : [...x,{id:m.id,watched:false,rating:0}]);
@@ -491,7 +619,6 @@ function App(){
     return <Onboarding
       services={services} setServices={setServices}
       filters={filters} setFilters={setFilters}
-      mode={mode} setMode={setMode}
       onConnect={(name)=>setConnectedTo(name)}
       onDone={()=>{setOnboarded(true); setScreen('swipe');}}
       goScreen={setScreen}
@@ -500,9 +627,9 @@ function App(){
 
   return (
     <div className="app">
-      <TopBar mode={mode} setMode={setMode} notif={notif} partner={connectedTo}
+      <TopBar session={session} members={members} notif={notif}
         onBell={()=>{setScreen('matches'); setNotif(0);}}
-        onFilter={()=>setScreen('filters')} />
+        onRoom={()=>setScreen('session')} onSettings={()=>setScreen('settings')} />
 
       {screen==='swipe' && <SwipeScreen deck={deck} onSwipe={handleSwipe} swipes={swipes}
         onOpenFilters={()=>setScreen('filters')} partner={connectedTo}
@@ -510,14 +637,22 @@ function App(){
       {screen==='filters' && <FiltersScreen filters={filters} setFilters={setFilters}
         services={services} setServices={setServices} onDone={()=>setScreen('swipe')}
         onAbout={()=>setScreen('about')} />}
-      {screen==='about' && <AboutScreen onBack={()=>setScreen('filters')} />}
+      {screen==='about' && <AboutScreen onBack={()=>setScreen('settings')} />}
+      {screen==='session' && <SessionScreen session={session} members={members}
+        onCreate={doCreate} onJoin={doJoin} busy={sessBusy} error={sessErr}
+        onLeave={()=>{setSession(null); setAllSwipes([]); setMembers({});}}
+        onDone={()=>setScreen('swipe')} />}
+      {screen==='settings' && <SettingsScreen user={user} session={session}
+        onBack={()=>setScreen('swipe')} onAbout={()=>setScreen('about')}
+        onSession={()=>setScreen('session')} onSignOut={()=>signOutNow()}
+        onReplay={()=>{ setOnboarded(false); }} />}
       {screen==='matches' && <MatchesScreen matches={matches} onGo={()=>setScreen('swipe')} />}
       {screen==='watchlist' && <WatchlistScreen watchlist={watchlist} setWatchlist={setWatchlist} onGo={()=>setScreen('swipe')} />}
       {screen==='connections' && <ConnectionsScreen matches={matches}
         onOpen={(c)=>{setActiveConn(c); setScreen('connDetail');}} partner={connectedTo}/>}
       {screen==='connDetail' && <ConnectionDetail conn={activeConn} onBack={()=>setScreen('connections')} />}
 
-      {screen!=='filters' && screen!=='connDetail' && screen!=='about' &&
+      {['swipe','matches','watchlist','connections'].includes(screen) &&
         <BottomNav screen={screen} setScreen={setScreen} notif={notif} setNotif={setNotif} />}
 
       {matchModal && <MatchModal data={matchModal} partner={connectedTo}
@@ -527,17 +662,20 @@ function App(){
 }
 
 /* ============================= TOP BAR ============================= */
-function TopBar({mode,setMode,notif,onBell,partner}){
+function TopBar({session,members,notif,onBell,onRoom,onSettings}){
+  const n = Object.keys(members||{}).length;
   return (
     <div className="topbar">
       <div className="brand"><span className="dot"></span>ReelMatch</div>
       <div className="topbtns">
-        <button className="modechip" onClick={()=>setMode(mode==='live'?'async':'live')}>
-          <span className={mode==='live'?'live':'async'}></span>{mode==='live'?'Same room':'Anytime'}
+        <button className="modechip" onClick={onRoom}>
+          <span className={session?'live':'async'}></span>
+          {session? `${session} · ${n}` : 'Start a room'}
         </button>
         <button className="iconbtn" onClick={onBell}>
           <I.bell/>{notif>0 && <span className="badge">{notif}</span>}
         </button>
+        <button className="iconbtn" onClick={onSettings}><I.sliders/></button>
       </div>
     </div>
   );
@@ -879,6 +1017,172 @@ function AboutScreen({onBack}){
   );
 }
 
+
+/* ============================= AUTH + SESSION + SETTINGS ============================= */
+function SignInScreen({onSignIn,busy,error}){
+  return (
+    <div className="intro">
+      <div className="introtop">
+        <div className="introart">🎬</div>
+        <h1>Reel<span className="hl">Match</span></h1>
+        <p>Swipe through movies with the people you actually watch with. Sign in to get started.</p>
+        {error && <p style={{color:'var(--rose)',fontSize:13,marginTop:14}}>{error}</p>}
+      </div>
+      <div className="introfoot">
+        <button className="cta" onClick={onSignIn} disabled={busy}>
+          {busy?'Opening Google…':'Continue with Google'}</button>
+      </div>
+    </div>
+  );
+}
+
+function DeniedScreen({email,onSignOut}){
+  return (
+    <div className="intro">
+      <div className="introtop">
+        <div className="introart">🔒</div>
+        <h1>Not on the list yet</h1>
+        <p><b style={{color:'var(--text)'}}>{email}</b> hasn't been added. Ask whoever sent you the
+        link to add this address, then sign in again.</p>
+      </div>
+      <div className="introfoot">
+        <button className="ghostcta" onClick={onSignOut}>Try a different account</button>
+      </div>
+    </div>
+  );
+}
+
+function SessionScreen({session,members,onCreate,onJoin,onLeave,onDone,busy,error}){
+  const [code,setCode] = useState('');
+  const list = Object.values(members||{});
+  const link = session ? `${location.origin}${location.pathname}?join=${session}` : '';
+
+  if(session){
+    return (
+      <div className="screen"><div className="pad">
+        <div className="head"><h1>Your room</h1><p>Anyone with this code can swipe along with you.</p></div>
+        <div className="qrwrap" style={{marginTop:20}}>
+          <div className="code" style={{fontSize:40}}>{session}</div>
+          <div className="muted" style={{fontSize:13,textAlign:'center',maxWidth:250}}>
+            Read the code out loud, or share the link.
+          </div>
+          <button className="ghostcta" style={{maxWidth:260}} onClick={()=>{
+            if(navigator.share) navigator.share({title:'Join my ReelMatch room',url:link});
+            else { navigator.clipboard?.writeText(link); alert('Link copied'); }
+          }}>Share join link</button>
+        </div>
+        <div className="sectiontitle">In the room · {list.length}</div>
+        {list.map((mem,i)=>(
+          <div className="row" key={i}>
+            <div className="thumb" style={{width:44,height:44,borderRadius:14,background:'var(--velvet2)',
+              display:'flex',alignItems:'center',justifyContent:'center',fontSize:20}}>🍿</div>
+            <div className="rowmain"><div className="tt">{mem.name}</div></div>
+          </div>
+        ))}
+        {list.length<2 &&
+          <p style={{fontSize:13,color:'var(--mist)',textAlign:'center',marginTop:10}}>
+            Waiting for someone else to join. Matches need at least two people.</p>}
+        <button className="cta" onClick={onDone}>Start swiping</button>
+        <button className="ghostcta" onClick={onLeave}>Leave room</button>
+      </div></div>
+    );
+  }
+
+  return (
+    <div className="screen"><div className="pad">
+      <div className="head"><h1>Watch together</h1>
+        <p>One person starts a room, everyone else joins with the code.</p></div>
+      {error && <p style={{color:'var(--rose)',fontSize:13}}>{error}</p>}
+      <button className="cta" onClick={onCreate} disabled={busy}>
+        {busy?'Setting up…':'Start a room'}</button>
+      <div className="sectiontitle">Or join one</div>
+      <input value={code} onChange={e=>setCode(e.target.value.toUpperCase())}
+        placeholder="ABCDE" maxLength={5} autoCapitalize="characters"
+        style={{width:'100%',padding:'16px',borderRadius:16,background:'var(--velvet)',
+          border:'1px solid var(--haze)',color:'var(--text)',fontSize:26,textAlign:'center',
+          fontFamily:'Bricolage Grotesque',fontWeight:800,letterSpacing:'.25em'}}/>
+      <button className="ghostcta" onClick={()=>onJoin(code)} disabled={busy||code.length<5}>Join room</button>
+      <p style={{fontSize:12.5,color:'var(--mist)',textAlign:'center',marginTop:16,lineHeight:1.5}}>
+        You can swipe on your own too — matches just appear whenever the others catch up.
+      </p>
+    </div></div>
+  );
+}
+
+function SettingsScreen({user,session,onBack,onReplay,onSignOut,onAbout,onSession}){
+  return (
+    <div className="screen"><div className="pad">
+      <button className="iconbtn" onClick={onBack} style={{marginBottom:12}}><I.back/></button>
+      <div className="head"><h1>Settings</h1></div>
+      {user &&
+        <div className="row">
+          <div className="thumb" style={{width:48,height:48,borderRadius:16,background:'var(--velvet2)',
+            display:'flex',alignItems:'center',justifyContent:'center',fontSize:22}}>🎬</div>
+          <div className="rowmain">
+            <div className="tt">{user.displayName||'Signed in'}</div>
+            <div className="sub">{user.email}</div>
+          </div>
+        </div>}
+      <div className="sectiontitle">Session</div>
+      <button className="ghostcta" style={{marginTop:0}} onClick={onSession}>
+        {session? `Room ${session} · manage` : 'Start or join a room'}</button>
+      <div className="sectiontitle">App</div>
+      <button className="ghostcta" style={{marginTop:0}} onClick={onReplay}>Replay the walkthrough</button>
+      <button className="ghostcta" onClick={onAbout}>About & credits</button>
+      {user && <button className="ghostcta" style={{color:'var(--rose)'}} onClick={onSignOut}>Sign out</button>}
+    </div></div>
+  );
+}
+
+/* ============================= ROOT (auth gate) ============================= */
+function Root(){
+  const [state,setState] = useState(FB_ON?'loading':'demo');
+  const [user,setUser] = useState(null);
+  const [profile,setProfile] = useState(null);
+  const [err,setErr] = useState(null);
+  const [busy,setBusy] = useState(false);
+
+  useEffect(()=>{
+    if(!FB_ON) return;
+    return auth.onAuthStateChanged(async u=>{
+      if(!u){ setUser(null); setState('signedout'); return; }
+      setUser(u);
+      try{
+        // If no allowlist doc exists yet, everyone signed in is allowed.
+        const cfg = await db.collection('config').doc('allowlist').get();
+        if(cfg.exists){
+          const ok = (cfg.data().emails||[]).map(e=>String(e).toLowerCase());
+          if(!ok.includes(String(u.email||'').toLowerCase())){ setState('denied'); return; }
+        }
+        const ref = db.collection('users').doc(u.uid);
+        const snap = await ref.get();
+        if(!snap.exists){
+          const fresh = {email:u.email, name:u.displayName, onboarded:false, createdAt:Date.now()};
+          await ref.set(fresh); setProfile(fresh);
+        } else {
+          setProfile(snap.data());
+          ref.update({lastActive:Date.now()}).catch(()=>{});
+        }
+        setState('ready');
+      }catch(e){ console.error(e); setErr(e.message); setState('denied'); }
+    });
+  },[]);
+
+  const saveProfile = patch => {
+    setProfile(p=>({...(p||{}),...patch}));
+    if(user) db.collection('users').doc(user.uid).update(patch).catch(e=>console.error(e));
+  };
+
+  if(state==='loading') return <div className="intro"><div className="introtop">
+    <div className="introart">🎬</div><p>Loading…</p></div></div>;
+  if(state==='signedout') return <SignInScreen busy={busy} error={err} onSignIn={async()=>{
+    setBusy(true); setErr(null);
+    try{ await signIn(); }catch(e){ setErr(e.message); }finally{ setBusy(false); }
+  }}/>;
+  if(state==='denied') return <DeniedScreen email={user?.email} onSignOut={()=>signOutNow()}/>;
+  return <App user={user} profile={profile} saveProfile={saveProfile} demo={!FB_ON}/>;
+}
+
 /* ============================= BOTTOM NAV ============================= */
 function BottomNav({screen,setScreen,notif,setNotif}){
   const items=[
@@ -925,7 +1229,7 @@ function MatchModal({data,partner,onClose,onList}){
 }
 
 /* ============================= ONBOARDING + GUIDED TOUR ============================= */
-function Onboarding({services,setServices,filters,setFilters,mode,setMode,onConnect,onDone,goScreen}){
+function Onboarding({services,setServices,filters,setFilters,onConnect,onDone,goScreen}){
   // phase: 'intro' (slides) -> 'tour' (guided across real screens)
   const [phase,setPhase]=useState('intro');
   const [slide,setSlide]=useState(0);
@@ -982,7 +1286,7 @@ function Onboarding({services,setServices,filters,setFilters,mode,setMode,onConn
   const st=steps[tour];
   return (
     <div className="app">
-      <TopBar mode={mode} setMode={setMode} notif={1} partner={connected?'Alex':null} onBell={()=>{}} onFilter={()=>{}}/>
+      <TopBar session={null} members={{}} notif={1} onBell={()=>{}} onRoom={()=>{}} onSettings={()=>{}}/>
       {/* behind-the-sheet content mirrors the real screen being explained */}
       {st.screen==='connect' && <ConnectPane connected={connected} onConnect={()=>{ setConnected(true); onConnect('Alex'); }}/>}
       {st.screen==='filters' && <FiltersScreen filters={filters} setFilters={setFilters} services={services} setServices={setServices} onDone={()=>{}}/>}
@@ -1039,7 +1343,7 @@ function QR(){
   );
 }
 
-ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+ReactDOM.createRoot(document.getElementById('root')).render(<Root/>);
 </script>
 </body>
 </html>
