@@ -295,7 +295,7 @@ const I = {
    Get your token: themoviedb.org → Settings → API → "API Read Access Token"
    Leave it as-is and the app keeps running on the built-in demo titles.
    ===================================================================== */
-const TMDB_TOKEN = "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJiOGIzZDRlM2FlMWNkMzZmOWU0Y2ZjZDI5YTNhZWExYSIsIm5iZiI6MTc4NDY4NTc4OC45MDEsInN1YiI6IjZhNjAyNGRjMWJkZTRlMjM4YzcxODE0MiIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.PpKsH5sxi8SJQ0-LveFLM991_Cod0J1J7yZmZC79NKg";
+const TMDB_TOKEN = "PASTE_YOUR_V4_READ_ACCESS_TOKEN_HERE";
 const REGION = "US";   // change if you're not in the US
 
 const TMDB_ON = !TMDB_TOKEN.startsWith("PASTE_");
@@ -313,7 +313,7 @@ const SERVICES = [
   {id:'ytv',  name:'YouTube TV',  sw:'▶',  c:'#ff0033', p:363},
 ];
 const svc = id => SERVICES.find(s=>s.id===id);
-const provName = m => (m.providers && m.providers[0]) || provName(m) || 'your services';
+const provName = m => (m.providers && m.providers[0]) || svc(m.s)?.name || 'your services';
 
 const GENRE_IDS = {Action:28, Comedy:35, Drama:18, Horror:27, 'Sci-Fi':878, Thriller:53,
   Romance:10749, Animation:16, Documentary:99, Fantasy:14};
