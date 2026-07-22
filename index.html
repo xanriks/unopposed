@@ -290,16 +290,80 @@ const I = {
 };
 
 /* ============================= DATA ============================= */
+/* =====================================================================
+   TMDB SETUP — this is the only line you need to edit.
+   Get your token: themoviedb.org → Settings → API → "API Read Access Token"
+   Leave it as-is and the app keeps running on the built-in demo titles.
+   ===================================================================== */
+const TMDB_TOKEN = "PASTE_YOUR_V4_READ_ACCESS_TOKEN_HERE";
+const REGION = "US";   // change if you're not in the US
+
+const TMDB_ON = !TMDB_TOKEN.startsWith("PASTE_");
+const TMDB_BASE = "https://api.themoviedb.org/3";
+const IMG = (p,size='w780') => p ? `https://image.tmdb.org/t/p/${size}${p}` : null;
+
+// TMDB "provider id" for each service. Verify/adjust with the helper below.
 const SERVICES = [
-  {id:'nflx', name:'Netflix', sw:'N', c:'#E50914'},
-  {id:'dnp', name:'Disney+', sw:'D+', c:'#0e6ed6'},
-  {id:'prime', name:'Prime Video', sw:'pv', c:'#1ba7e0'},
-  {id:'max', name:'Max', sw:'M', c:'#7b2ff7'},
-  {id:'hulu', name:'Hulu', sw:'h', c:'#1ce783'},
-  {id:'appl', name:'Apple TV+', sw:'tv', c:'#444'},
-  {id:'ytv', name:'YouTube TV', sw:'▶', c:'#ff0033'},
+  {id:'nflx', name:'Netflix',     sw:'N',  c:'#E50914', p:8},
+  {id:'dnp',  name:'Disney+',     sw:'D+', c:'#0e6ed6', p:337},
+  {id:'prime',name:'Prime Video', sw:'pv', c:'#1ba7e0', p:9},
+  {id:'max',  name:'Max',         sw:'M',  c:'#7b2ff7', p:1899},
+  {id:'hulu', name:'Hulu',        sw:'h',  c:'#1ce783', p:15},
+  {id:'appl', name:'Apple TV+',   sw:'tv', c:'#444',    p:350},
+  {id:'ytv',  name:'YouTube TV',  sw:'▶',  c:'#ff0033', p:363},
 ];
 const svc = id => SERVICES.find(s=>s.id===id);
+const provName = m => (m.providers && m.providers[0]) || provName(m) || 'your services';
+
+const GENRE_IDS = {Action:28, Comedy:35, Drama:18, Horror:27, 'Sci-Fi':878, Thriller:53,
+  Romance:10749, Animation:16, Documentary:99, Fantasy:14};
+
+async function tmdb(path, params={}){
+  const url = new URL(TMDB_BASE + path);
+  Object.entries(params).forEach(([k,v])=>{ if(v!=null && v!=='') url.searchParams.set(k,v); });
+  const r = await fetch(url, {headers:{Authorization:`Bearer ${TMDB_TOKEN}`, accept:'application/json'}});
+  if(!r.ok) throw new Error(r.status===401 ? 'Token rejected — check your Read Access Token' : `TMDB error ${r.status}`);
+  return r.json();
+}
+
+// Run listProviders() in the browser console to print current provider IDs for your region.
+async function listProviders(){
+  const d = await tmdb('/watch/providers/movie', {watch_region:REGION});
+  console.table(d.results.map(p=>({id:p.provider_id, name:p.provider_name})));
+}
+
+async function fetchDeck({services, filters, page=1}){
+  const dec = {'2020s':[2020,2029],'2010s':[2010,2019],'2000s':[2000,2009],
+               '90s':[1990,1999],'80s & older':[1900,1989]}[filters.decade];
+  const d = await tmdb('/discover/movie', {
+    watch_region: REGION,
+    with_watch_providers: services.map(id=>svc(id)?.p).filter(Boolean).join('|'),
+    with_watch_monetization_types: 'flatrate',
+    with_genres: filters.genres.map(g=>GENRE_IDS[g]).filter(Boolean).join(','),
+    without_genres: filters.dealbreakers.map(g=>GENRE_IDS[g]).filter(Boolean).join(','),
+    'with_runtime.lte': filters.maxRun,
+    'primary_release_date.gte': dec ? `${dec[0]}-01-01` : null,
+    'primary_release_date.lte': dec ? `${dec[1]}-12-31` : null,
+    'vote_count.gte': 150,
+    sort_by:'popularity.desc', include_adult:false, language:'en-US', page,
+  });
+  return (d.results||[]).map(r=>({
+    id:r.id, t:r.title, y:(r.release_date||'').slice(0,4), run:null,
+    g:(r.genre_ids||[]).map(g=>Object.keys(GENRE_IDS).find(k=>GENRE_IDS[k]===g)).filter(Boolean),
+    mood:'', r:r.vote_average||0, s:null, poster:IMG(r.poster_path), o:r.overview,
+    a:'#2b2140', b:'#4a3a6b',
+  }));
+}
+
+// One extra call per card gives us runtime + which service it's actually on.
+async function enrich(m){
+  if(m._full) return m;
+  try{
+    const d = await tmdb(`/movie/${m.id}`, {append_to_response:'watch/providers', language:'en-US'});
+    const flat = d['watch/providers']?.results?.[REGION]?.flatrate || [];
+    return {...m, run:d.runtime, providers:flat.map(p=>p.provider_name), _full:true};
+  }catch{ return {...m, _full:true}; }
+}
 
 const GENRES = ['Action','Comedy','Drama','Horror','Sci-Fi','Thriller','Romance','Animation','Documentary','Fantasy'];
 const MOODS = ['Light','Comfort','Intense','Brain-off','Mind-bending'];
@@ -328,7 +392,11 @@ const M = [
   {id:19, t:'Voidwalkers', y:2022, run:145, g:['Sci-Fi','Action'], mood:'Brain-off', r:7.6, s:'prime', a:'#360033', b:'#0b8793', o:'A crew of debt-strapped salvagers boards a derelict ship that doesn\u2019t want to be salvaged.'},
   {id:20, t:'Marrow', y:2024, run:108, g:['Horror','Drama'], mood:'Intense', r:7.9, s:'max', a:'#2c3e50', b:'#4ca1af', o:'A hospice nurse begins to suspect the house she works in is keeping her patients from leaving.'},
 ];
-const movie = id => M.find(m=>m.id===id);
+// Registry so matches/watchlist can resolve titles from either source.
+const REG = {};
+const remember = list => list.forEach(m=>{ REG[m.id]=m; });
+remember(M);
+const movie = id => REG[id];
 
 // The simulated friend you connect with in the walkthrough:
 const ALEX = {
@@ -357,9 +425,32 @@ function App(){
   const [notif,setNotif] = useState(1);
   const [connectedTo,setConnectedTo] = useState(null); // name of current partner
 
+  const [remote,setRemote] = useState(null);
+  const [loading,setLoading] = useState(false);
+  const [apiError,setApiError] = useState(null);
+
+  // Pull a real queue from TMDB whenever services or filters change.
+  useEffect(()=>{
+    if(!TMDB_ON || !onboarded) return;
+    let dead = false;
+    setLoading(true); setApiError(null);
+    fetchDeck({services,filters})
+      .then(async list=>{
+        const head = await Promise.all(list.slice(0,4).map(enrich));
+        const full = [...head, ...list.slice(4)];
+        remember(full);
+        if(!dead) setRemote(full);
+      })
+      .catch(e=>{ if(!dead) setApiError(e.message); })
+      .finally(()=>{ if(!dead) setLoading(false); });
+    return ()=>{ dead = true; };
+  },[services,filters,onboarded]);
+
   // build the swipe deck from filters + services, excluding already-swiped
-  const deck = M.filter(m=>{
+  const source = (TMDB_ON && remote) ? remote : M;
+  const deck = source.filter(m=>{
     if(swipes[m.id]) return false;
+    if(TMDB_ON && remote) return true;   // TMDB already applied every filter
     if(!services.includes(m.s)) return false;
     if(filters.genres.length && !m.g.some(g=>filters.genres.includes(g))) return false;
     if(filters.mood && m.mood!==filters.mood) return false;
@@ -379,12 +470,14 @@ function App(){
     // dir: 'like' | 'nope' | 'super' | 'seen'
     setSwipes(s=>({...s,[m.id]:dir}));
     const partner = connectedTo || 'Alex';
+    // Stand-in for a real partner until Firebase is wired up.
+    // With live TMDB ids we fake Alex's taste so the match moment still demos.
+    const live = TMDB_ON && remote;
+    const wants = live ? (m.id % 3 === 0) : ALEX.wants.includes(m.id);
+    const loved = live ? (m.id % 5 === 0) : ALEX.loved.includes(m.id);
     if(partner==='Alex'){
-      if((dir==='like'||dir==='super') && ALEX.wants.includes(m.id)){
-        registerMatch(m,'want');
-      } else if(dir==='seen' && ALEX.loved.includes(m.id)){
-        registerMatch(m,'rewatch');
-      }
+      if((dir==='like'||dir==='super') && wants) registerMatch(m,'want');
+      else if(dir==='seen' && loved) registerMatch(m,'rewatch');
     }
   }
   function registerMatch(m,type){
@@ -412,16 +505,19 @@ function App(){
         onFilter={()=>setScreen('filters')} />
 
       {screen==='swipe' && <SwipeScreen deck={deck} onSwipe={handleSwipe} swipes={swipes}
-        onOpenFilters={()=>setScreen('filters')} partner={connectedTo} />}
+        onOpenFilters={()=>setScreen('filters')} partner={connectedTo}
+        loading={loading} apiError={apiError} />}
       {screen==='filters' && <FiltersScreen filters={filters} setFilters={setFilters}
-        services={services} setServices={setServices} onDone={()=>setScreen('swipe')} />}
+        services={services} setServices={setServices} onDone={()=>setScreen('swipe')}
+        onAbout={()=>setScreen('about')} />}
+      {screen==='about' && <AboutScreen onBack={()=>setScreen('filters')} />}
       {screen==='matches' && <MatchesScreen matches={matches} onGo={()=>setScreen('swipe')} />}
       {screen==='watchlist' && <WatchlistScreen watchlist={watchlist} setWatchlist={setWatchlist} onGo={()=>setScreen('swipe')} />}
       {screen==='connections' && <ConnectionsScreen matches={matches}
         onOpen={(c)=>{setActiveConn(c); setScreen('connDetail');}} partner={connectedTo}/>}
       {screen==='connDetail' && <ConnectionDetail conn={activeConn} onBack={()=>setScreen('connections')} />}
 
-      {screen!=='filters' && screen!=='connDetail' &&
+      {screen!=='filters' && screen!=='connDetail' && screen!=='about' &&
         <BottomNav screen={screen} setScreen={setScreen} notif={notif} setNotif={setNotif} />}
 
       {matchModal && <MatchModal data={matchModal} partner={connectedTo}
@@ -448,7 +544,7 @@ function TopBar({mode,setMode,notif,onBell,partner}){
 }
 
 /* ============================= SWIPE SCREEN ============================= */
-function SwipeScreen({deck,onSwipe,onOpenFilters,partner}){
+function SwipeScreen({deck,onSwipe,onOpenFilters,partner,loading,apiError}){
   const [showHint,setShowHint] = useState(true);
   useEffect(()=>{ const t=setTimeout(()=>setShowHint(false),3200); return ()=>clearTimeout(t); },[]);
   const top = deck[0];
@@ -457,7 +553,20 @@ function SwipeScreen({deck,onSwipe,onOpenFilters,partner}){
     <>
       <div className="screen" style={{overflow:'hidden'}}>
         <div className="deck">
-          {deck.length===0 &&
+          {loading && deck.length===0 &&
+            <div className="empty">
+              <div className="film">🎞️</div>
+              <h2>Lining up your queue</h2>
+              <p>Pulling titles that are streaming on your services right now.</p>
+            </div>}
+          {apiError && !loading &&
+            <div className="empty">
+              <div className="film">⚠️</div>
+              <h2>Couldn't reach TMDB</h2>
+              <p>{apiError}</p>
+              <p style={{fontSize:12}}>Check TMDB_TOKEN near the top of index.html.</p>
+            </div>}
+          {!loading && !apiError && deck.length===0 &&
             <div className="empty">
               <div className="film">🎞️</div>
               <h2>That's the reel</h2>
@@ -513,9 +622,11 @@ function Card({m,depth,onSwipe,isTop,partner}){
   return (
     <div ref={ref} className={"card"+(expanded?' expanded':'')} style={style}
       onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up}>
-      <div className="poster" style={{background:`linear-gradient(150deg, ${m.a}, ${m.b})`}}></div>
+      <div className="poster" style={m.poster
+        ? {backgroundImage:`url(${m.poster})`, backgroundSize:'cover', backgroundPosition:'center'}
+        : {background:`linear-gradient(150deg, ${m.a}, ${m.b})`}}></div>
       <div className="grain"></div>
-      <div className="postertitle">{m.t}</div>
+      {!m.poster && <div className="postertitle">{m.t}</div>}
       <div className="glowedge" style={{opacity:yesOp*0.9}}></div>
 
       <div className="stamp yes" style={{opacity:yesOp}}>Yes</div>
@@ -530,17 +641,17 @@ function Card({m,depth,onSwipe,isTop,partner}){
 
       <div className="cardbody" onClick={()=>setExpanded(x=>!x)}>
         <div className="chips">
-          <span className="chip svc">{svc(m.s)?.name}</span>
+          <span className="chip svc">{provName(m)}</span>
           {m.g.slice(0,2).map(g=><span key={g} className="chip">{g}</span>)}
           <span className="chip">{m.mood}</span>
         </div>
         <h2>{m.t}</h2>
         <div className="meta">
           <span className="rate">★ {m.r.toFixed(1)}</span>
-          <span>{m.y}</span><span>·</span><span>{m.run} min</span>
+          <span>{m.y}</span>{m.run? <><span>·</span><span>{m.run} min</span></> : null}
           <span style={{marginLeft:'auto',display:'flex',alignItems:'center',gap:5,color:'var(--glow)'}}><I.play/> Trailer</span>
         </div>
-        <div className="why"><I.spark style={{width:14,height:14}}/> On {svc(m.s)?.name} · matches your {m.g[0]} pick</div>
+        <div className="why"><I.spark style={{width:14,height:14}}/> On {provName(m)} · matches your {m.g[0]} pick</div>
         <div className="overview">{m.o}</div>
       </div>
     </div>
@@ -559,7 +670,7 @@ function ActionBar({m,onSwipe}){
 }
 
 /* ============================= FILTERS ============================= */
-function FiltersScreen({filters,setFilters,services,setServices,onDone}){
+function FiltersScreen({filters,setFilters,services,setServices,onDone,onAbout=()=>{}}){
   const tg = (key,val)=> setFilters(f=>({...f,[key]: f[key].includes(val)? f[key].filter(x=>x!==val):[...f[key],val]}));
   return (
     <div className="screen"><div className="pad">
@@ -603,6 +714,11 @@ function FiltersScreen({filters,setFilters,services,setServices,onDone}){
       </div>
 
       <button className="cta" onClick={onDone}>Show me the queue</button>
+      <button className="ghostcta" onClick={onAbout}>About & credits</button>
+      <p style={{fontSize:11.5,color:'var(--mist)',textAlign:'center',lineHeight:1.5,margin:'14px 2px 0'}}>
+        This product uses the TMDB API but is not endorsed or certified by TMDB.
+        Streaming availability provided by JustWatch.
+      </p>
     </div></div>
   );
 }
@@ -624,7 +740,7 @@ function MatchesScreen({matches,onGo}){
           <div className="thumb" style={{background:`linear-gradient(150deg,${m.a},${m.b})`}}><div className="t"></div></div>
           <div className="rowmain">
             <div className="tt">{m.t}</div>
-            <div className="sub">{svc(m.s)?.name} · {m.run} min · ★ {m.r.toFixed(1)}</div>
+            <div className="sub">{provName(m)} · {m.run} min · ★ {m.r.toFixed(1)}</div>
           </div>
           <span className={"tag "+(type==='rewatch'?'rewatch':'want')}>{type==='rewatch'?'Rewatch':'Both want'}</span>
         </div>);})}
@@ -651,7 +767,7 @@ function WatchlistScreen({watchlist,setWatchlist,onGo}){
           <div className="thumb" style={{background:`linear-gradient(150deg,${m.a},${m.b})`,opacity:watched?.5:1}}></div>
           <div className="rowmain">
             <div className="tt">{m.t}</div>
-            <div className="sub">{svc(m.s)?.name} · {m.run} min</div>
+            <div className="sub">{provName(m)} · {m.run} min</div>
             <div style={{display:'flex',alignItems:'center',gap:10,marginTop:8}}>
               <div className="stars">
                 {[1,2,3,4,5].map(n=><span key={n} onClick={()=>setRating(id,n)} style={{color:n<=rating?'var(--glow)':'var(--haze)'}}>
@@ -719,8 +835,46 @@ function ConnectionDetail({conn,onBack}){
       {conn.mutual.map(id=>{ const m=movie(id); if(!m) return null; return (
         <div className="row" key={id}>
           <div className="thumb" style={{background:`linear-gradient(150deg,${m.a},${m.b})`}}></div>
-          <div className="rowmain"><div className="tt">{m.t}</div><div className="sub">{svc(m.s)?.name} · {m.g.join(', ')}</div></div>
+          <div className="rowmain"><div className="tt">{m.t}</div><div className="sub">{provName(m)} · {m.g.join(', ')}</div></div>
         </div>);})}
+    </div></div>
+  );
+}
+
+/* ============================= ABOUT / CREDITS ============================= */
+function AboutScreen({onBack}){
+  const box = {background:'var(--velvet)',border:'1px solid var(--haze)',borderRadius:16,padding:16,marginBottom:4};
+  return (
+    <div className="screen"><div className="pad">
+      <button className="iconbtn" onClick={onBack} style={{marginBottom:12}}><I.back/></button>
+      <div className="head"><h1>About & credits</h1>
+        <p>ReelMatch is a personal, non-commercial project.</p></div>
+
+      <div className="sectiontitle">Movie & TV data</div>
+      <div style={box}>
+        {/* Save an approved TMDB logo as tmdb-logo.svg next to index.html in your repo. */}
+        <img src="tmdb-logo.svg" alt="The Movie Database"
+             style={{height:24,display:'block',marginBottom:12}}
+             onError={e=>{ e.target.style.display='none'; }}/>
+        <p style={{fontSize:14,lineHeight:1.55,margin:0}}>
+          This product uses the TMDB API but is not endorsed or certified by TMDB.
+        </p>
+      </div>
+
+      <div className="sectiontitle">Where to watch</div>
+      <div style={box}>
+        <p style={{fontSize:14,lineHeight:1.55,margin:0,color:'#d8cff0'}}>
+          Streaming availability data is provided by JustWatch.
+        </p>
+      </div>
+
+      <div className="sectiontitle">Good to know</div>
+      <div style={box}>
+        <p style={{fontSize:13.5,lineHeight:1.6,margin:0,color:'#d8cff0'}}>
+          ReelMatch never asks for your streaming passwords. You just tell it which
+          services you subscribe to, and it only shows titles available on those.
+        </p>
+      </div>
     </div></div>
   );
 }
@@ -761,7 +915,7 @@ function MatchModal({data,partner,onClose,onList}){
         </div>
         <p className="matchsub">
           {rw ? `You and ${partner||'Alex'} have both seen ` : `You and ${partner||'Alex'} both want to watch `}
-          <b style={{color:'var(--text)'}}>{m.t}</b>{rw?' — and loved it.':'.'} It's streaming on {svc(m.s)?.name}.
+          <b style={{color:'var(--text)'}}>{m.t}</b>{rw?' — and loved it.':'.'} It's streaming on {provName(m)}.
         </p>
         <button className="cta" onClick={onList}>Add to watchlist</button>
         <button className="ghostcta" onClick={onClose}>Keep swiping</button>
