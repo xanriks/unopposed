@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-<title>ReelMatch — swipe to find what to watch together</title>
+<title>UnOpposed — everyone agrees, or nobody watches</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -298,7 +298,7 @@ const I = {
    Get your token: themoviedb.org → Settings → API → "API Read Access Token"
    Leave it as-is and the app keeps running on the built-in demo titles.
    ===================================================================== */
-const TMDB_TOKEN = "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJiOGIzZDRlM2FlMWNkMzZmOWU0Y2ZjZDI5YTNhZWExYSIsIm5iZiI6MTc4NDY4NTc4OC45MDEsInN1YiI6IjZhNjAyNGRjMWJkZTRlMjM4YzcxODE0MiIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.PpKsH5sxi8SJQ0-LveFLM991_Cod0J1J7yZmZC79NKg";
+const TMDB_TOKEN = "PASTE_YOUR_V4_READ_ACCESS_TOKEN_HERE";
 const REGION = "US";   // change if you're not in the US
 
 const TMDB_ON = !TMDB_TOKEN.startsWith("PASTE_");
@@ -364,12 +364,12 @@ async function fetchDeck({services, filters, page=1}){
    Leave it as-is and the app runs solo with no sign-in (demo mode).
    ===================================================================== */
 const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyAajXYhAMvZdERGrPmjb50siv_lOOb-ATc",
-  authDomain: "reel-match-ed3a1.firebaseapp.com",
-  projectId: "reel-match-ed3a1",
-  storageBucket: "reel-match-ed3a1.firebasestorage.app",
-  messagingSenderId: "817755289516",
-  appId: "1:817755289516:web:612f7820ad4b24cae22c09"
+  apiKey: "PASTE_FIREBASE_API_KEY",
+  authDomain: "PASTE.firebaseapp.com",
+  projectId: "PASTE_PROJECT_ID",
+  storageBucket: "PASTE.appspot.com",
+  messagingSenderId: "PASTE_SENDER_ID",
+  appId: "PASTE_APP_ID"
 };
 
 const FB_ON = !FIREBASE_CONFIG.apiKey.startsWith("PASTE_") && typeof firebase !== "undefined";
@@ -380,8 +380,44 @@ if(FB_ON){
   db = firebase.firestore();
 }
 
-const signIn = () => auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
+// Always show the account chooser so nobody lands on the wrong Google account.
+const googleProvider = () => {
+  const p = new firebase.auth.GoogleAuthProvider();
+  p.setCustomParameters({prompt:'select_account'});
+  return p;
+};
+const signIn = async () => {
+  try{
+    return await auth.signInWithPopup(googleProvider());
+  }catch(e){
+    // In-app browsers block popups; fall back to a full-page redirect.
+    if(e.code==='auth/popup-blocked' || e.code==='auth/operation-not-supported-in-this-environment'){
+      return auth.signInWithRedirect(googleProvider());
+    }
+    throw e;
+  }
+};
 const signOutNow = () => auth.signOut();
+
+// No Google, no redirect, no cross-domain handshake — works in every browser.
+let pendingName = '';
+const signInAnon = async name=>{
+  pendingName = (name||'').trim() || 'Guest';
+  const cred = await auth.signInAnonymously();
+  try{ await cred.user.updateProfile({displayName:pendingName}); }catch(e){}
+  return cred;
+};
+
+// iOS in-app browsers (Messages, Instagram, etc.) partition storage and break sign-in.
+const isIOS = () => /iPhone|iPad|iPod/i.test(navigator.userAgent);
+const authMessage = e => ({
+  'auth/unauthorized-domain':"This address isn't authorized in Firebase yet.",
+  'auth/popup-blocked':'Your browser blocked the sign-in window. Try opening this page in Safari or Chrome.',
+  'auth/popup-closed-by-user':'Sign-in was cancelled.',
+  'auth/cancelled-popup-request':'Sign-in was cancelled.',
+  'auth/network-request-failed':'Network problem. Check your connection and try again.',
+  'auth/internal-error':'Sign-in got interrupted. If you opened this from a text message, open it in Safari instead.',
+}[e.code] || e.message);
 
 // Room codes skip look-alike characters so they're easy to read aloud.
 const ALPHA = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -666,7 +702,7 @@ function TopBar({session,members,notif,onBell,onRoom,onSettings}){
   const n = Object.keys(members||{}).length;
   return (
     <div className="topbar">
-      <div className="brand"><span className="dot"></span>ReelMatch</div>
+      <div className="brand"><span className="dot"></span>UnOpposed</div>
       <div className="topbtns">
         <button className="modechip" onClick={onRoom}>
           <span className={session?'live':'async'}></span>
@@ -986,7 +1022,7 @@ function AboutScreen({onBack}){
     <div className="screen"><div className="pad">
       <button className="iconbtn" onClick={onBack} style={{marginBottom:12}}><I.back/></button>
       <div className="head"><h1>About & credits</h1>
-        <p>ReelMatch is a personal, non-commercial project.</p></div>
+        <p>UnOpposed is a personal, non-commercial project.</p></div>
 
       <div className="sectiontitle">Movie & TV data</div>
       <div style={box}>
@@ -1009,7 +1045,7 @@ function AboutScreen({onBack}){
       <div className="sectiontitle">Good to know</div>
       <div style={box}>
         <p style={{fontSize:13.5,lineHeight:1.6,margin:0,color:'#d8cff0'}}>
-          ReelMatch never asks for your streaming passwords. You just tell it which
+          UnOpposed never asks for your streaming passwords. You just tell it which
           services you subscribe to, and it only shows titles available on those.
         </p>
       </div>
@@ -1019,18 +1055,37 @@ function AboutScreen({onBack}){
 
 
 /* ============================= AUTH + SESSION + SETTINGS ============================= */
-function SignInScreen({onSignIn,busy,error}){
+function SignInScreen({onSignIn,onAnon,busy,error}){
+  const [name,setName] = useState('');
+  const [alt,setAlt] = useState(false);
   return (
     <div className="intro">
       <div className="introtop">
         <div className="introart">🎬</div>
-        <h1>Reel<span className="hl">Match</span></h1>
+        <h1>Un<span className="hl">Opposed</span></h1>
         <p>Swipe through movies with the people you actually watch with. Sign in to get started.</p>
-        {error && <p style={{color:'var(--rose)',fontSize:13,marginTop:14}}>{error}</p>}
+        {error && <p style={{color:'var(--rose)',fontSize:13,marginTop:14,lineHeight:1.5}}>{error}</p>}
+        {isIOS() &&
+          <p style={{fontSize:12.5,color:'var(--mist)',marginTop:18,lineHeight:1.5,maxWidth:270}}>
+            Opened this from a text? Tap <b style={{color:'var(--text)'}}>•••</b> then
+            <b style={{color:'var(--text)'}}> Open in Safari</b> first — sign-in won't work inside
+            the Messages browser.
+          </p>}
       </div>
       <div className="introfoot">
-        <button className="cta" onClick={onSignIn} disabled={busy}>
-          {busy?'Opening Google…':'Continue with Google'}</button>
+        {!alt ? <>
+          <button className="cta" onClick={onSignIn} disabled={busy}>
+            {busy?'Opening Google…':'Continue with Google'}</button>
+          <button className="ghostcta" onClick={()=>setAlt(true)}>Trouble signing in? Use a name</button>
+        </> : <>
+          <input value={name} onChange={e=>setName(e.target.value)} placeholder="Your name"
+            maxLength={20}
+            style={{width:'100%',padding:'15px',borderRadius:16,background:'var(--velvet)',
+              border:'1px solid var(--haze)',color:'var(--text)',fontSize:16,textAlign:'center'}}/>
+          <button className="cta" onClick={()=>onAnon(name)} disabled={busy||!name.trim()}>
+            {busy?'One moment…':'Start swiping'}</button>
+          <button className="ghostcta" onClick={()=>setAlt(false)}>Back to Google sign-in</button>
+        </>}
       </div>
     </div>
   );
@@ -1067,7 +1122,7 @@ function SessionScreen({session,members,onCreate,onJoin,onLeave,onDone,busy,erro
             Read the code out loud, or share the link.
           </div>
           <button className="ghostcta" style={{maxWidth:260}} onClick={()=>{
-            if(navigator.share) navigator.share({title:'Join my ReelMatch room',url:link});
+            if(navigator.share) navigator.share({title:'Join my UnOpposed room',url:link});
             else { navigator.clipboard?.writeText(link); alert('Link copied'); }
           }}>Share join link</button>
         </div>
@@ -1144,12 +1199,13 @@ function Root(){
 
   useEffect(()=>{
     if(!FB_ON) return;
+    auth.getRedirectResult().catch(e=>setErr(authMessage(e)));
     return auth.onAuthStateChanged(async u=>{
       if(!u){ setUser(null); setState('signedout'); return; }
       setUser(u);
       try{
         // If no allowlist doc exists yet, everyone signed in is allowed.
-        const cfg = await db.collection('config').doc('allowlist').get();
+        const cfg = u.isAnonymous ? {exists:false} : await db.collection('config').doc('allowlist').get();
         if(cfg.exists){
           const ok = (cfg.data().emails||[]).map(e=>String(e).toLowerCase());
           if(!ok.includes(String(u.email||'').toLowerCase())){ setState('denied'); return; }
@@ -1157,7 +1213,8 @@ function Root(){
         const ref = db.collection('users').doc(u.uid);
         const snap = await ref.get();
         if(!snap.exists){
-          const fresh = {email:u.email, name:u.displayName, onboarded:false, createdAt:Date.now()};
+          const fresh = {email:u.email||null, name:u.displayName||pendingName||'Guest',
+                         guest:!!u.isAnonymous, onboarded:false, createdAt:Date.now()};
           await ref.set(fresh); setProfile(fresh);
         } else {
           setProfile(snap.data());
@@ -1175,10 +1232,18 @@ function Root(){
 
   if(state==='loading') return <div className="intro"><div className="introtop">
     <div className="introart">🎬</div><p>Loading…</p></div></div>;
-  if(state==='signedout') return <SignInScreen busy={busy} error={err} onSignIn={async()=>{
-    setBusy(true); setErr(null);
-    try{ await signIn(); }catch(e){ setErr(e.message); }finally{ setBusy(false); }
-  }}/>;
+  if(state==='signedout') return <SignInScreen busy={busy} error={err}
+    onSignIn={async()=>{
+      setBusy(true); setErr(null);
+      try{ await signIn(); }catch(e){ setErr(authMessage(e)); }finally{ setBusy(false); }
+    }}
+    onAnon={async n=>{
+      setBusy(true); setErr(null);
+      try{ await signInAnon(n); }
+      catch(e){ setErr(e.code==='auth/operation-not-allowed'
+        ? 'Turn on Anonymous sign-in in Firebase, then try again.' : authMessage(e)); }
+      finally{ setBusy(false); }
+    }}/>;
   if(state==='denied') return <DeniedScreen email={user?.email} onSignOut={()=>signOutNow()}/>;
   return <App user={user} profile={profile} saveProfile={saveProfile} demo={!FB_ON}/>;
 }
@@ -1238,7 +1303,7 @@ function Onboarding({services,setServices,filters,setFilters,onConnect,onDone,go
 
   const slides=[
     {art:'🎬', h:<>Never argue about <span className="hl">what to watch</span> again</>,
-     p:'ReelMatch is a two-player game. You each swipe through movies on the services you already pay for. When you both say yes — it\u2019s a match.'},
+     p:'Everyone in the room swipes through movies on the services you already pay for. When nobody objects, it\u2019s a match.'},
     {art:'👉👈', h:<>Swipe together, <span className="hl">match instantly</span></>,
      p:'Right for yes, left for pass, up for a must-see. The moment your picks line up, both of you get the same lit-up match.'},
     {art:'🍿', h:<>Built around <span className="hl">your</span> subscriptions</>,
