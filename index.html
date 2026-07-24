@@ -334,7 +334,7 @@ const I = {
    themoviedb.org → Settings → API → "API Read Access Token"
    Left as-is, the app runs on built-in demo titles.
    ===================================================================== */
-const TMDB_TOKEN = "PASTE_YOUR_V4_READ_ACCESS_TOKEN_HERE";
+const TMDB_TOKEN = "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJiOGIzZDRlM2FlMWNkMzZmOWU0Y2ZjZDI5YTNhZWExYSIsIm5iZiI6MTc4NDY4NTc4OC45MDEsInN1YiI6IjZhNjAyNGRjMWJkZTRlMjM4YzcxODE0MiIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.PpKsH5sxi8SJQ0-LveFLM991_Cod0J1J7yZmZC79NKg";
 const REGION = "US";
 
 const TMDB_ON = !TMDB_TOKEN.startsWith("PASTE_");
@@ -347,12 +347,12 @@ const IMG = (p,size='w780') => p ? `https://image.tmdb.org/t/p/${size}${p}` : nu
    Left as-is, the app runs solo with no sign-in.
    ===================================================================== */
 const FIREBASE_CONFIG = {
-  apiKey: "PASTE_FIREBASE_API_KEY",
-  authDomain: "PASTE.firebaseapp.com",
-  projectId: "PASTE_PROJECT_ID",
-  storageBucket: "PASTE.appspot.com",
-  messagingSenderId: "PASTE_SENDER_ID",
-  appId: "PASTE_APP_ID"
+  apiKey: "AIzaSyAajXYhAMvZdERGrPmjb50siv_lOOb-ATc",
+  authDomain: "reel-match-ed3a1.firebaseapp.com",
+  projectId: "reel-match-ed3a1",
+  storageBucket: "reel-match-ed3a1.firebasestorage.app",
+  messagingSenderId: "817755289516",
+  appId: "1:817755289516:web:612f7820ad4b24cae22c09"
 };
 
 const FB_ON = !FIREBASE_CONFIG.apiKey.startsWith("PASTE_") && typeof firebase !== "undefined";
