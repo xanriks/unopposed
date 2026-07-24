@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>UnOpposed — pick a logo</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+@media (max-width:480px){
+  body{padding:22px 12px 60px}
+  h1{font-size:26px}
+  .grid{grid-template-columns:1fr}
+  .row{gap:12px}
+}
+:root{--ink:#14101F;--velvet:#211A33;--velvet2:#291F40;--haze:#372B52;
+  --glow:#FFC24B;--cream:#F4EEFF;--mist:#A99FC4;--text:#F4EEFF;--slate:#191227;}
+*{box-sizing:border-box}
+body{margin:0;background:#0C0913;color:var(--text);font-family:Inter,system-ui,sans-serif;
+  padding:30px 18px 70px;}
+.wrap{max-width:1000px;margin:0 auto}
+h1{font-family:'Bricolage Grotesque';font-size:32px;margin:0 0 6px;letter-spacing:-.02em}
+.sub{color:var(--mist);font-size:14.5px;line-height:1.6;margin:0 0 30px;max-width:640px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:18px}
+.card{background:var(--velvet);border:1px solid var(--haze);border-radius:20px;padding:20px;
+  position:relative}
+.letter{position:absolute;top:16px;right:18px;font-family:'Bricolage Grotesque';font-weight:800;
+  font-size:26px;color:var(--glow);opacity:.85}
+.card h2{font-family:'Bricolage Grotesque';font-size:18px;margin:0 0 4px;padding-right:34px}
+.card .idea{color:var(--mist);font-size:12.5px;line-height:1.5;margin:0 0 16px;min-height:38px}
+.row{display:flex;align-items:center;gap:18px;padding-top:14px;border-top:1px solid var(--haze);
+  flex-wrap:wrap}
+.cell{text-align:center}
+.cell .lab{font-size:9.5px;color:var(--mist);margin-top:7px;letter-spacing:.06em;text-transform:uppercase}
+.iconbg{background:linear-gradient(150deg,#2a1f42,#150f22);border-radius:22%;
+  display:flex;align-items:center;justify-content:center;box-shadow:0 6px 18px rgba(0,0,0,.5)}
+.mono{color:var(--glow)}
+.barctx{display:flex;align-items:center;gap:7px;background:var(--ink);border:1px solid var(--haze);
+  border-radius:10px;padding:7px 11px}
+.barctx .nm{font-family:'Bricolage Grotesque';font-weight:800;font-size:15px}
+.how{background:var(--velvet2);border:1px solid var(--haze);border-radius:18px;padding:20px;
+  margin-bottom:26px}
+.how h3{font-family:'Bricolage Grotesque';font-size:17px;margin:0 0 8px}
+.how p{color:var(--mist);font-size:13.5px;line-height:1.6;margin:0}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>Which one?</h1>
+<p class="sub">I'm building an app called <b style="color:var(--text)">UnOpposed</b> — everyone
+in the room swipes through movies, and when nobody objects, that's what you watch. These are six
+options for its logo: three overlapping circles (one per person, agreeing) sitting inside a film
+slate. Each is shown in full colour, as a phone icon, and small in gold the way it appears inside
+the app.</p>
+
+<div class="how">
+  <h3>How to vote</h3>
+  <p>Look at the small gold one first — that's the size you'll actually see most of the time.
+  If it turns to mush there, it doesn't matter how good the big one looks. Then hold your phone
+  at arm's length and see which you can still recognise. <b style="color:var(--text)">Text me the
+  letter.</b></p>
+</div>
+
+<div class="grid" id="grid"></div>
+</div>
+
+<script>
+/* Each option is a function returning SVG at a given size, in colour or mono.
+   uid keeps clipPath ids unique across the page. */
+const C = {slate:'#191227', stripe:'#F4EEFF', dot:'#FFC24B', edge:'#372B52'};
+
+function arm(uid, x, y, w, h, colour){
+  const body = colour ? C.slate : 'currentColor';
+  const strp = colour ? C.stripe : 'currentColor';
+  let stripes = '';
+  for(let sx = x - h; sx < x + w + h; sx += h*1.55){
+    stripes += `<path d="M${sx.toFixed(1)} ${y} h${(h*0.72).toFixed(1)} l-${h} ${h} h-${(h*0.72).toFixed(1)} z" fill="${strp}" ${colour?'':'opacity=".55"'}/>`;
+  }
+  return `<defs><clipPath id="a${uid}"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="1.4"/></clipPath></defs>
+  <g clip-path="url(#a${uid})">
+    <rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${body}"/>
+    ${stripes}
+  </g>
+  ${colour?`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="1.4" fill="none" stroke="${C.edge}" stroke-width=".7"/>`:''}`;
+}
+
+function circles(cx, cy, r, colour, opts={}){
+  const f = colour ? C.dot : 'currentColor';
+  const sw = opts.stroke || 0;
+  if(sw){
+    return `<g fill="none" stroke="${f}" stroke-width="${sw}">
+      <circle cx="${cx}" cy="${cy-r*0.62}" r="${r}"/>
+      <circle cx="${cx-r*0.86}" cy="${cy+r*0.52}" r="${r}"/>
+      <circle cx="${cx+r*0.86}" cy="${cy+r*0.52}" r="${r}"/></g>
+      <circle cx="${cx}" cy="${cy+r*0.06}" r="${(r*0.38).toFixed(2)}" fill="${f}"/>`;
+  }
+  return `<g fill="${f}" opacity=".82">
+    <circle cx="${cx}" cy="${cy-r*0.62}" r="${r}"/>
+    <circle cx="${cx-r*0.86}" cy="${cy+r*0.52}" r="${r}"/>
+    <circle cx="${cx+r*0.86}" cy="${cy+r*0.52}" r="${r}"/></g>`;
+}
+
+const OPTS = [
+  { key:'A', name:'Closed slate',
+    idea:'The full clapperboard, arm down. Most literal — reads as "film" instantly.',
+    draw:(u,col)=>`
+      <rect x="2.5" y="10.5" width="27" height="18" rx="2.6" fill="${col?C.slate:'currentColor'}" ${col?'':'opacity=".28"'}/>
+      ${arm(u,2.5,3.6,27,6,col)}
+      ${circles(16,19.6,4.1,col,{stroke:1.7})}` },
+
+  { key:'B', name:'Open slate',
+    idea:'Arm raised mid-clap, hinged at the left. More energy — the moment before action.',
+    draw:(u,col)=>`
+      <rect x="2.5" y="11.5" width="27" height="17" rx="2.6" fill="${col?C.slate:'currentColor'}" ${col?'':'opacity=".28"'}/>
+      <g transform="rotate(-13 4 9.5)">${arm(u,2.5,6,27,5.6,col)}</g>
+      ${circles(16,20.4,4,col,{stroke:1.7})}` },
+
+  { key:'C', name:'Bare stripes',
+    idea:'No box at all — just the striped bar above the circles. The simplest of the six.',
+    draw:(u,col)=>`
+      ${arm(u,3,4.5,26,6,col)}
+      ${circles(16,20.5,4.6,col,{stroke:1.9})}` },
+
+  { key:'D', name:'Dotted arm',
+    idea:'The stripes on the arm become dots, echoing the circles below. Most unified.',
+    draw:(u,col)=>{
+      const f = col?C.stripe:'currentColor';
+      let d=''; for(let x=6;x<=26;x+=5) d+=`<circle cx="${x}" cy="7.4" r="1.7" fill="${f}"/>`;
+      return `<rect x="2.5" y="11" width="27" height="17.5" rx="2.6" fill="${col?C.slate:'currentColor'}" ${col?'':'opacity=".28"'}/>
+      <rect x="2.5" y="3.8" width="27" height="7.2" rx="1.6" fill="${col?C.slate:'currentColor'}" ${col?'':'opacity=".5"'}/>
+      ${d}${circles(16,20,4.1,col,{stroke:1.7})}`; } },
+
+  { key:'E', name:'Outline slate',
+    idea:'Everything drawn in line, nothing filled. Lightest and most delicate.',
+    draw:(u,col)=>`
+      <rect x="2.7" y="10.7" width="26.6" height="17.6" rx="2.6" fill="none"
+        stroke="${col?C.stripe:'currentColor'}" stroke-width="1.8"/>
+      ${arm(u,2.7,3.8,26.6,6,col)}
+      ${circles(16,19.6,4.1,col,{stroke:1.7})}` },
+
+  { key:'F', name:'Solid circles',
+    idea:'Circles filled rather than outlined, so the overlaps read as one shape. Boldest at tiny sizes.',
+    draw:(u,col)=>`
+      <rect x="2.5" y="10.5" width="27" height="18" rx="2.6" fill="${col?C.slate:'currentColor'}" ${col?'':'opacity=".28"'}/>
+      ${arm(u,2.5,3.6,27,6,col)}
+      ${circles(16,19.4,4.3,col)}` },
+];
+
+const grid = document.getElementById('grid');
+OPTS.forEach((o,i)=>{
+  const svg = (px,col,uid)=>
+    `<svg width="${px}" height="${px}" viewBox="0 0 32 32">${o.draw(uid,col)}</svg>`;
+  const el = document.createElement('div');
+  el.className='card';
+  el.innerHTML = `
+    <div class="letter">${o.key}</div>
+    <h2>${o.name}</h2>
+    <p class="idea">${o.idea}</p>
+    <div class="row">
+      <div class="cell">${svg(96,true,o.key+'1')}<div class="lab">full colour</div></div>
+      <div class="cell"><div class="iconbg" style="width:62px;height:62px">${svg(46,true,o.key+'2')}</div><div class="lab">app icon</div></div>
+      <div class="cell"><span class="mono">${svg(30,false,o.key+'3')}</span><div class="lab">flat gold</div></div>
+      <div class="cell"><div class="barctx"><span class="mono">${svg(21,false,o.key+'4')}</span><span class="nm">UnOpposed</span></div><div class="lab">in the app</div></div>
+    </div>`;
+  grid.appendChild(el);
+});
+</script>
+</body>
+</html>

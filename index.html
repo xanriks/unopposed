@@ -266,6 +266,42 @@
   @keyframes sway{0%,100%{transform:translateX(-30px) rotate(-8deg)}50%{transform:translateX(30px) rotate(8deg)}}
 
   @media (prefers-reduced-motion:reduce){*{animation:none !important; transition:none !important;}}
+
+  /* ---------- number pad ---------- */
+  .pad3{display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin:18px 0 6px;}
+  .key{padding:18px 0; border-radius:18px; background:var(--velvet); border:1px solid var(--haze);
+    font-family:'Bricolage Grotesque'; font-weight:700; font-size:26px; color:var(--text);}
+  .key:active{background:var(--velvet2); transform:scale(.95);}
+  .key.fn{font-size:15px; font-family:'Inter'; color:var(--mist); font-weight:600;}
+  .codebox{display:flex; justify-content:center; gap:9px; margin:6px 0 4px;}
+  .codebox i{width:42px; height:56px; border-radius:12px; background:var(--velvet);
+    border:1.5px solid var(--haze); display:flex; align-items:center; justify-content:center;
+    font-family:'Bricolage Grotesque'; font-weight:800; font-size:26px; font-style:normal;}
+  .codebox i.on{border-color:var(--glow); color:var(--glow);}
+
+  /* ---------- big session code ---------- */
+  .bigcode{font-family:'Bricolage Grotesque'; font-weight:800; font-size:52px; letter-spacing:.12em;
+    color:var(--glow); text-shadow:0 0 30px rgba(255,194,75,.4); text-align:center;}
+
+  /* ---------- mood grid ---------- */
+  .moods{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  .mood{padding:14px 12px; border-radius:16px; background:var(--velvet); border:1.5px solid var(--haze);
+    font-size:13.5px; font-weight:600; color:var(--mist); text-align:left; line-height:1.3;}
+  .mood.on{border-color:var(--glow); background:var(--velvet2); color:var(--glow-soft);}
+
+  /* ---------- toggle row ---------- */
+  .tog{width:46px;height:27px;border-radius:999px;background:var(--haze); position:relative; flex:0 0 auto; transition:background .15s;}
+  .tog b{position:absolute; top:3px; left:3px; width:21px;height:21px;border-radius:50%; background:#fff; transition:left .15s;}
+  .tog.on{background:var(--ok);} .tog.on b{left:22px;}
+
+  /* ---------- wildcard ---------- */
+  .dice{font-size:56px; text-align:center; animation:roll .7s cubic-bezier(.2,1.3,.4,1);}
+  @keyframes roll{0%{transform:rotate(-25deg) scale(.5); opacity:0}100%{transform:rotate(0) scale(1); opacity:1}}
+
+  .tourbadge{position:absolute; top:12px; left:50%; transform:translateX(-50%); z-index:70;
+    background:rgba(255,194,75,.16); border:1px solid rgba(255,194,75,.45); color:var(--glow);
+    font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase;
+    padding:5px 12px; border-radius:999px;}
 </style>
 </head>
 <body>
@@ -277,99 +313,46 @@ const {useState, useEffect, useRef} = React;
 /* ============================= ICONS ============================= */
 const I = {
   x:(p)=><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" {...p}><path d="M18 6 6 18M6 6l12 12"/></svg>,
-  heart:(p)=><svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" {...p}><path d="M12 21s-7.5-4.6-10-9.3C.4 8.4 1.8 5 5 5c2 0 3.2 1.2 4 2.3C9.8 6.2 11 5 13 5c3.2 0 4.6 3.4 3 6.7C19.5 16.4 12 21 12 21z"/></svg>,
+  heart:(p)=><svg width="27" height="27" viewBox="0 0 24 24" fill="currentColor" {...p}><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>,
   star:(p)=><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" {...p}><path d="M12 2l2.9 6.3 6.9.8-5.1 4.7 1.4 6.8L12 17.8 5.9 20.6l1.4-6.8L2.2 9.1l6.9-.8z"/></svg>,
   starO:(p)=><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" {...p}><path d="M12 2l2.9 6.3 6.9.8-5.1 4.7 1.4 6.8L12 17.8 5.9 20.6l1.4-6.8L2.2 9.1l6.9-.8z"/></svg>,
   film:(p)=><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" {...p}><rect x="2" y="3" width="20" height="18" rx="3"/><path d="M7 3v18M17 3v18M2 8h5M2 16h5M17 8h5M17 16h5"/></svg>,
   spark:(p)=><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" {...p}><path d="M12 3v6M12 15v6M3 12h6M15 12h6M5.6 5.6l4.2 4.2M14.2 14.2l4.2 4.2M18.4 5.6l-4.2 4.2M9.8 14.2l-4.2 4.2"/></svg>,
   list:(p)=><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" {...p}><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>,
-  users:(p)=><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" {...p}><circle cx="9" cy="8" r="3.4"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 5.2A3.4 3.4 0 0 1 16 12M18 20a6.5 6.5 0 0 0-4-6"/></svg>,
+  user:(p)=><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" {...p}><circle cx="12" cy="8" r="3.6"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/></svg>,
   sliders:(p)=><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" {...p}><path d="M4 6h11M19 6h1M4 12h5M13 12h7M4 18h9M17 18h3"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="14" cy="18" r="2"/></svg>,
   bell:(p)=><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" {...p}><path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6M10 20a2 2 0 0 0 4 0"/></svg>,
   check:(p)=><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" {...p}><path d="M4 12l5 5L20 6"/></svg>,
   play:(p)=><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" {...p}><path d="M6 4l14 8-14 8z"/></svg>,
   eye:(p)=><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" {...p}><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>,
   back:(p)=><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" {...p}><path d="M15 5l-7 7 7 7"/></svg>,
+  users:(p)=><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" {...p}><circle cx="9" cy="8" r="3.4"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 5.2A3.4 3.4 0 0 1 16 12M18 20a6.5 6.5 0 0 0-4-6"/></svg>,
 };
 
-/* ============================= DATA ============================= */
 /* =====================================================================
-   TMDB SETUP — this is the only line you need to edit.
-   Get your token: themoviedb.org → Settings → API → "API Read Access Token"
-   Leave it as-is and the app keeps running on the built-in demo titles.
+   TMDB SETUP — paste your v4 Read Access Token between the quotes.
+   themoviedb.org → Settings → API → "API Read Access Token"
+   Left as-is, the app runs on built-in demo titles.
    ===================================================================== */
-const TMDB_TOKEN = "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJiOGIzZDRlM2FlMWNkMzZmOWU0Y2ZjZDI5YTNhZWExYSIsIm5iZiI6MTc4NDY4NTc4OC45MDEsInN1YiI6IjZhNjAyNGRjMWJkZTRlMjM4YzcxODE0MiIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.PpKsH5sxi8SJQ0-LveFLM991_Cod0J1J7yZmZC79NKg";
-const REGION = "US";   // change if you're not in the US
+const TMDB_TOKEN = "PASTE_YOUR_V4_READ_ACCESS_TOKEN_HERE";
+const REGION = "US";
 
 const TMDB_ON = !TMDB_TOKEN.startsWith("PASTE_");
 const TMDB_BASE = "https://api.themoviedb.org/3";
 const IMG = (p,size='w780') => p ? `https://image.tmdb.org/t/p/${size}${p}` : null;
 
-// TMDB "provider id" for each service. Verify/adjust with the helper below.
-const SERVICES = [
-  {id:'nflx', name:'Netflix',     sw:'N',  c:'#E50914', p:8},
-  {id:'dnp',  name:'Disney+',     sw:'D+', c:'#0e6ed6', p:337},
-  {id:'prime',name:'Prime Video', sw:'pv', c:'#1ba7e0', p:9},
-  {id:'max',  name:'Max',         sw:'M',  c:'#7b2ff7', p:1899},
-  {id:'hulu', name:'Hulu',        sw:'h',  c:'#1ce783', p:15},
-  {id:'appl', name:'Apple TV+',   sw:'tv', c:'#444',    p:350},
-  {id:'ytv',  name:'YouTube TV',  sw:'▶',  c:'#ff0033', p:363},
-];
-const svc = id => SERVICES.find(s=>s.id===id);
-const provName = m => (m.providers && m.providers[0]) || svc(m.s)?.name || 'your services';
-
-const GENRE_IDS = {Action:28, Comedy:35, Drama:18, Horror:27, 'Sci-Fi':878, Thriller:53,
-  Romance:10749, Animation:16, Documentary:99, Fantasy:14};
-
-async function tmdb(path, params={}){
-  const url = new URL(TMDB_BASE + path);
-  Object.entries(params).forEach(([k,v])=>{ if(v!=null && v!=='') url.searchParams.set(k,v); });
-  const r = await fetch(url, {headers:{Authorization:`Bearer ${TMDB_TOKEN}`, accept:'application/json'}});
-  if(!r.ok) throw new Error(r.status===401 ? 'Token rejected — check your Read Access Token' : `TMDB error ${r.status}`);
-  return r.json();
-}
-
-// Run listProviders() in the browser console to print current provider IDs for your region.
-async function listProviders(){
-  const d = await tmdb('/watch/providers/movie', {watch_region:REGION});
-  console.table(d.results.map(p=>({id:p.provider_id, name:p.provider_name})));
-}
-
-async function fetchDeck({services, filters, page=1}){
-  const dec = {'2020s':[2020,2029],'2010s':[2010,2019],'2000s':[2000,2009],
-               '90s':[1990,1999],'80s & older':[1900,1989]}[filters.decade];
-  const d = await tmdb('/discover/movie', {
-    watch_region: REGION,
-    with_watch_providers: services.map(id=>svc(id)?.p).filter(Boolean).join('|'),
-    with_watch_monetization_types: 'flatrate',
-    with_genres: filters.genres.map(g=>GENRE_IDS[g]).filter(Boolean).join(','),
-    without_genres: filters.dealbreakers.map(g=>GENRE_IDS[g]).filter(Boolean).join(','),
-    'with_runtime.lte': filters.maxRun,
-    'primary_release_date.gte': dec ? `${dec[0]}-01-01` : null,
-    'primary_release_date.lte': dec ? `${dec[1]}-12-31` : null,
-    'vote_count.gte': 150,
-    sort_by:'popularity.desc', include_adult:false, language:'en-US', page,
-  });
-  return (d.results||[]).map(r=>({
-    id:r.id, t:r.title, y:(r.release_date||'').slice(0,4), run:null,
-    g:(r.genre_ids||[]).map(g=>Object.keys(GENRE_IDS).find(k=>GENRE_IDS[k]===g)).filter(Boolean),
-    mood:'', r:r.vote_average||0, s:null, poster:IMG(r.poster_path), o:r.overview,
-    a:'#2b2140', b:'#4a3a6b',
-  }));
-}
-
 /* =====================================================================
-   FIREBASE SETUP — paste the config object from your Firebase console.
-   Project settings → Your apps → Web app → SDK setup → Config.
-   Leave it as-is and the app runs solo with no sign-in (demo mode).
+   FIREBASE SETUP — paste the config from your Firebase console.
+   Project settings → Your apps → Web app → Config.
+   Left as-is, the app runs solo with no sign-in.
    ===================================================================== */
 const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyAajXYhAMvZdERGrPmjb50siv_lOOb-ATc",
-  authDomain: "reel-match-ed3a1.firebaseapp.com",
-  projectId: "reel-match-ed3a1",
-  storageBucket: "reel-match-ed3a1.firebasestorage.app",
-  messagingSenderId: "817755289516",
-  appId: "1:817755289516:web:612f7820ad4b24cae22c09"
+  apiKey: "PASTE_FIREBASE_API_KEY",
+  authDomain: "PASTE.firebaseapp.com",
+  projectId: "PASTE_PROJECT_ID",
+  storageBucket: "PASTE.appspot.com",
+  messagingSenderId: "PASTE_SENDER_ID",
+  appId: "PASTE_APP_ID"
 };
 
 const FB_ON = !FIREBASE_CONFIG.apiKey.startsWith("PASTE_") && typeof firebase !== "undefined";
@@ -380,76 +363,131 @@ if(FB_ON){
   db = firebase.firestore();
 }
 
-// Always show the account chooser so nobody lands on the wrong Google account.
-const googleProvider = () => {
-  const p = new firebase.auth.GoogleAuthProvider();
-  p.setCustomParameters({prompt:'select_account'});
-  return p;
-};
-const signIn = async () => {
-  try{
-    return await auth.signInWithPopup(googleProvider());
-  }catch(e){
-    // In-app browsers block popups; fall back to a full-page redirect.
-    if(e.code==='auth/popup-blocked' || e.code==='auth/operation-not-supported-in-this-environment'){
-      return auth.signInWithRedirect(googleProvider());
-    }
-    throw e;
-  }
-};
-const signOutNow = () => auth.signOut();
+/* ============================= REFERENCE DATA ============================= */
+const SERVICES = [
+  {id:'nflx', name:'Netflix',     sw:'N',  c:'#E50914', p:8},
+  {id:'dnp',  name:'Disney+',     sw:'D+', c:'#0e6ed6', p:337},
+  {id:'prime',name:'Prime Video', sw:'pv', c:'#1ba7e0', p:9},
+  {id:'max',  name:'Max',         sw:'M',  c:'#7b2ff7', p:1899},
+  {id:'hulu', name:'Hulu',        sw:'h',  c:'#1ce783', p:15},
+  {id:'appl', name:'Apple TV+',   sw:'tv', c:'#444',    p:350},
+  {id:'para', name:'Paramount+',  sw:'P+', c:'#0064ff', p:531},
+  {id:'peac', name:'Peacock',     sw:'pk', c:'#000',    p:386},
+];
+const svc = id => SERVICES.find(s=>s.id===id);
 
-// No Google, no redirect, no cross-domain handshake — works in every browser.
-let pendingName = '';
-const signInAnon = async name=>{
-  pendingName = (name||'').trim() || 'Guest';
-  const cred = await auth.signInAnonymously();
-  try{ await cred.user.updateProfile({displayName:pendingName}); }catch(e){}
-  return cred;
-};
+const GENRE_IDS = {Action:28, Adventure:12, Animation:16, Comedy:35, Crime:80,
+  Documentary:99, Drama:18, Family:10751, Fantasy:14, History:36, Horror:27,
+  Music:10402, Mystery:9648, Romance:10749, 'Sci-Fi':878, Thriller:53, War:10752, Western:37};
+const GENRES = Object.keys(GENRE_IDS);
+const genreName = id => GENRES.find(g=>GENRE_IDS[g]===id);
 
-// iOS in-app browsers (Messages, Instagram, etc.) partition storage and break sign-in.
-const isIOS = () => /iPhone|iPad|iPod/i.test(navigator.userAgent);
-const authMessage = e => ({
-  'auth/unauthorized-domain':"This address isn't authorized in Firebase yet.",
-  'auth/popup-blocked':'Your browser blocked the sign-in window. Try opening this page in Safari or Chrome.',
-  'auth/popup-closed-by-user':'Sign-in was cancelled.',
-  'auth/cancelled-popup-request':'Sign-in was cancelled.',
-  'auth/network-request-failed':'Network problem. Check your connection and try again.',
-  'auth/internal-error':'Sign-in got interrupted. If you opened this from a text message, open it in Safari instead.',
-}[e.code] || e.message);
+// Moods map to real genre combinations, so they actually shape the queue.
+const MOODS = [
+  {id:'funny',  label:'Make us laugh',      g:[35]},
+  {id:'thrill', label:'Edge of our seats',  g:[53,80]},
+  {id:'scary',  label:'Scare us',           g:[27]},
+  {id:'love',   label:'Something romantic', g:[10749]},
+  {id:'big',    label:'Big and loud',       g:[28,12]},
+  {id:'think',  label:'Make us think',      g:[878,9648]},
+  {id:'feel',   label:'Feel-good',          g:[35,10751]},
+  {id:'cry',    label:'Have a good cry',    g:[18]},
+  {id:'true',   label:'Based on a true story', g:[99,36]},
+  {id:'family', label:'Family night',       g:[10751,16]},
+  {id:'weird',  label:'Something strange',  g:[14,878]},
+  {id:'any',    label:'Surprise us',        g:[]},
+];
+const moodById = id => MOODS.find(m=>m.id===id);
 
-// Room codes skip look-alike characters so they're easy to read aloud.
-const ALPHA = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-const newCode = () => Array.from({length:5},()=>ALPHA[Math.floor(Math.random()*ALPHA.length)]).join('');
+const DECADES = ['Any','2020s','2010s','2000s','90s','80s','Older'];
+const DEC_RANGE = {'2020s':[2020,2029],'2010s':[2010,2019],'2000s':[2000,2009],
+  '90s':[1990,1999],'80s':[1980,1989],'Older':[1900,1979]};
 
-async function createSession(uid,name){
-  const code = newCode();
-  await db.collection('sessions').doc(code).set({
-    host:uid, createdAt:Date.now(),
-    members:{[uid]:{name:name||'Someone', joinedAt:Date.now()}}
+const RUNTIMES = [
+  {label:'90 min or less', v:90},
+  {label:'Up to 2 hours',  v:120},
+  {label:'Up to 2½ hours', v:150},
+  {label:'However long',   v:400},
+];
+
+/* ============================= DEMO TITLES (no token yet) ============================= */
+const DEMO = [
+  {id:1, t:'Neon Requiem', y:2023, run:118, gid:[878,53], r:8.1, s:'nflx', a:'#5b2a86', b:'#ff5c7a', o:'A memory courier in a rain-soaked megacity discovers the data she carries can rewrite the past.'},
+  {id:2, t:'The Long Way Home', y:2019, run:104, gid:[18,10749], r:7.6, s:'prime', a:'#2b5876', b:'#4e4376', o:'Two strangers share a cross-country train and slowly rebuild the courage to start over.'},
+  {id:3, t:'Grave Shift', y:2022, run:96, gid:[27,53], r:7.0, s:'max', a:'#1f1c2c', b:'#928dab', o:'The night crew at a shuttered hospital learns why the last shift never clocked out.'},
+  {id:4, t:'Comet Kids', y:2021, run:92, gid:[16,14], r:8.4, s:'dnp', a:'#f7971e', b:'#ffd200', o:'Three siblings ride a runaway comet across a sky full of impossible islands.'},
+  {id:5, t:'Deadline', y:2024, run:129, gid:[53,18], r:7.9, s:'nflx', a:'#232526', b:'#e53935', o:'An investigative reporter has one night to prove a verdict was bought before the story dies.'},
+  {id:6, t:'Sunday Roast', y:2018, run:98, gid:[35,18], r:7.3, s:'hulu', a:'#e96443', b:'#f9d423', o:'A chaotic family reunion, one disastrous dinner, and a secret nobody wanted served.'},
+  {id:7, t:'Orbit', y:2020, run:141, gid:[878,18], r:8.0, s:'appl', a:'#0f2027', b:'#2c5364', o:'Stranded above a dying Earth, a lone engineer decides whether humanity deserves rescue.'},
+  {id:8, t:'Loose Ends', y:2023, run:101, gid:[35,10749], r:7.1, s:'prime', a:'#ff6a88', b:'#ff99ac', o:'A wedding planner who hates weddings falls for the one groom she cannot plan around.'},
+  {id:9, t:'Undertow', y:2017, run:112, gid:[53,18], r:7.8, s:'max', a:'#141e30', b:'#243b55', o:'A free-diver returns to the coastal town that blamed her for a drowning she did not cause.'},
+  {id:10, t:'Pixel Heart', y:2022, run:88, gid:[16,35], r:7.4, s:'dnp', a:'#8e2de2', b:'#4a00e0', o:'A retired arcade sprite breaks out of his cabinet to find the kid who used to play him.'},
+  {id:11, t:'The Reckoning', y:2016, run:134, gid:[28,53], r:7.5, s:'nflx', a:'#3a1c71', b:'#d76d77', o:'A getaway driver takes one last job that turns out to be a trap decades in the making.'},
+  {id:12, t:'Wildflower', y:2021, run:107, gid:[18,10749], r:8.2, s:'hulu', a:'#43cea2', b:'#185a9d', o:'A botanist and a grieving widower plant a garden that outgrows both of their plans.'},
+  {id:13, t:'Static', y:2024, run:99, gid:[27,878], r:7.2, s:'prime', a:'#000428', b:'#004e92', o:'A radio host starts receiving broadcasts from a town wiped off the map in 1998.'},
+  {id:14, t:'Feast', y:2019, run:95, gid:[99], r:8.6, s:'appl', a:'#f12711', b:'#f5af19', o:'Five street cooks on three continents chase the same impossible perfect bite.'},
+  {id:15, t:'Paper Planes', y:2015, run:90, gid:[35,18], r:7.0, s:'dnp', a:'#56ccf2', b:'#2f80ed', o:'A shy kid and a world folding championship teach a burned-out dad how to aim again.'},
+  {id:16, t:'The Hollow', y:2023, run:116, gid:[14,53], r:7.7, s:'max', a:'#42275a', b:'#734b6d', o:'A cartographer maps a forest that rearranges itself around everyone\u2019s worst memory.'},
+  {id:17, t:'Overtime', y:2020, run:103, gid:[28,35], r:7.3, s:'nflx', a:'#eb3349', b:'#f45c43', o:'Two mismatched security guards accidentally foil the heist of the century, badly.'},
+  {id:18, t:'Quietly, Now', y:2018, run:120, gid:[18], r:8.3, s:'hulu', a:'#334d50', b:'#cbcaa5', o:'A deaf pianist and her hearing brother learn to say goodbye in a language only they share.'},
+  {id:19, t:'Voidwalkers', y:2022, run:145, gid:[878,28], r:7.6, s:'prime', a:'#360033', b:'#0b8793', o:'A crew of debt-strapped salvagers boards a derelict ship that does not want to be salvaged.'},
+  {id:20, t:'Marrow', y:2024, run:108, gid:[27,18], r:7.9, s:'max', a:'#2c3e50', b:'#4ca1af', o:'A hospice nurse suspects the house she works in is keeping her patients from leaving.'},
+];
+DEMO.forEach(m=>{ m.providers=[svc(m.s)?.name]; });
+
+// Registry so matches and the watchlist can resolve any title we have seen.
+const REG = {};
+const remember = list => list.forEach(m=>{ if(m && m.id!=null) REG[m.id]=m; });
+remember(DEMO);
+const movie = id => REG[id];
+const provName = m => (m && m.providers && m.providers[0]) || 'your services';
+const trailerURL = m => 'https://www.youtube.com/results?search_query=' +
+  encodeURIComponent(`${m.t} ${m.y||''} trailer`);
+
+/* ============================= TMDB ============================= */
+async function tmdb(path, params={}){
+  const url = new URL(TMDB_BASE + path);
+  Object.entries(params).forEach(([k,v])=>{ if(v!=null && v!=='') url.searchParams.set(k,v); });
+  const r = await fetch(url, {headers:{Authorization:`Bearer ${TMDB_TOKEN.trim()}`, accept:'application/json'}});
+  if(!r.ok) throw new Error(r.status===401 ? 'Token rejected — check your Read Access Token' : `TMDB error ${r.status}`);
+  return r.json();
+}
+// Run in the browser console to print current provider IDs for your region.
+async function listProviders(){
+  const d = await tmdb('/watch/providers/movie', {watch_region:REGION});
+  console.table(d.results.map(p=>({id:p.provider_id, name:p.provider_name})));
+}
+
+const shuffle = a => { const x=a.slice(); for(let i=x.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [x[i],x[j]]=[x[j],x[i]]; } return x; };
+
+// Slate = the session's hard filters. Members' genres only re-rank, never exclude.
+async function fetchSlate({slate, dealbreakers, page}){
+  const mood = moodById(slate.mood) || moodById('any');
+  const dec = DEC_RANGE[slate.decade];
+  const d = await tmdb('/discover/movie', {
+    watch_region: REGION,
+    with_watch_providers: (slate.services||[]).map(id=>svc(id)?.p).filter(Boolean).join('|'),
+    with_watch_monetization_types: 'flatrate',
+    with_genres: mood.g.join('|'),
+    without_genres: (dealbreakers||[]).map(g=>GENRE_IDS[g]).filter(Boolean).join(','),
+    'with_runtime.lte': slate.maxRun,
+    'primary_release_date.gte': dec ? `${dec[0]}-01-01` : null,
+    'primary_release_date.lte': dec ? `${dec[1]}-12-31` : null,
+    'vote_count.gte': 120,
+    sort_by:'popularity.desc', include_adult:false, language:'en-US',
+    page: page || 1,
   });
-  return code;
+  return {
+    pages: Math.min(d.total_pages||1, 20),
+    items: (d.results||[]).map(r=>({
+      id:r.id, t:r.title, y:(r.release_date||'').slice(0,4), run:null,
+      gid:r.genre_ids||[], r:r.vote_average||0, poster:IMG(r.poster_path),
+      o:r.overview, a:'#2b2140', b:'#4a3a6b', providers:[],
+    })),
+  };
 }
-async function joinSession(raw,uid,name){
-  const code = (raw||'').trim().toUpperCase();
-  const ref = db.collection('sessions').doc(code);
-  const snap = await ref.get();
-  if(!snap.exists) throw new Error('No session with that code');
-  await ref.update({['members.'+uid]:{name:name||'Someone', joinedAt:Date.now()}});
-  return code;
-}
-function recordSwipe(code,uid,m,dir){
-  // Title/poster are stored alongside so every phone can render the match.
-  return db.collection('sessions').doc(code).collection('swipes').doc(uid+'_'+m.id).set({
-    uid, movieId:m.id, dir, title:m.t, poster:m.poster||null,
-    service:(m.providers&&m.providers[0])||null, ts:Date.now()
-  });
-}
-
-// One extra call per card gives us runtime + which service it's actually on.
 async function enrich(m){
-  if(m._full) return m;
+  if(!TMDB_ON || m._full) return m;
   try{
     const d = await tmdb(`/movie/${m.id}`, {append_to_response:'watch/providers', language:'en-US'});
     const flat = d['watch/providers']?.results?.[REGION]?.flatrate || [];
@@ -457,604 +495,150 @@ async function enrich(m){
   }catch{ return {...m, _full:true}; }
 }
 
-const GENRES = ['Action','Comedy','Drama','Horror','Sci-Fi','Thriller','Romance','Animation','Documentary','Fantasy'];
-const MOODS = ['Light','Comfort','Intense','Brain-off','Mind-bending'];
-const DECADES = ['Any','2020s','2010s','2000s','90s','80s & older'];
-
-// posters are CSS gradients — swap for real TMDB images later (see build notes)
-const M = [
-  {id:1, t:'Neon Requiem', y:2023, run:118, g:['Sci-Fi','Thriller'], mood:'Mind-bending', r:8.1, s:'nflx', a:'#5b2a86', b:'#ff5c7a', o:'A memory courier in a rain-soaked megacity discovers the data she carries can rewrite the past.'},
-  {id:2, t:'The Long Way Home', y:2019, run:104, g:['Drama','Romance'], mood:'Comfort', r:7.6, s:'prime', a:'#2b5876', b:'#4e4376', o:'Two strangers share a cross-country train and slowly rebuild the courage to start over.'},
-  {id:3, t:'Grave Shift', y:2022, run:96, g:['Horror','Thriller'], mood:'Intense', r:7.0, s:'max', a:'#1f1c2c', b:'#928dab', o:'The night crew at a shuttered hospital learns why the last shift never clocked out.'},
-  {id:4, t:'Comet Kids', y:2021, run:92, g:['Animation','Fantasy'], mood:'Light', r:8.4, s:'dnp', a:'#f7971e', b:'#ffd200', o:'Three siblings ride a runaway comet across a sky full of impossible islands.'},
-  {id:5, t:'Deadline', y:2024, run:129, g:['Thriller','Drama'], mood:'Intense', r:7.9, s:'nflx', a:'#232526', b:'#e53935', o:'An investigative reporter has one night to prove a verdict was bought before the story dies.'},
-  {id:6, t:'Sunday Roast', y:2018, run:98, g:['Comedy','Drama'], mood:'Comfort', r:7.3, s:'hulu', a:'#e96443', b:'#f9d423', o:'A chaotic family reunion, one disastrous dinner, and a secret nobody wanted served.'},
-  {id:7, t:'Orbit', y:2020, run:141, g:['Sci-Fi','Drama'], mood:'Mind-bending', r:8.0, s:'appl', a:'#0f2027', b:'#2c5364', o:'Stranded above a dying Earth, a lone engineer decides whether humanity deserves rescue.'},
-  {id:8, t:'Loose Ends', y:2023, run:101, g:['Comedy','Romance'], mood:'Light', r:7.1, s:'prime', a:'#ff6a88', b:'#ff99ac', o:'A wedding planner who hates weddings falls for the one groom she can\u2019t plan around.'},
-  {id:9, t:'Undertow', y:2017, run:112, g:['Thriller','Drama'], mood:'Intense', r:7.8, s:'max', a:'#141e30', b:'#243b55', o:'A free-diver returns to the coastal town that blamed her for a drowning she didn\u2019t cause.'},
-  {id:10, t:'Pixel Heart', y:2022, run:88, g:['Animation','Comedy'], mood:'Brain-off', r:7.4, s:'dnp', a:'#8e2de2', b:'#4a00e0', o:'A retired arcade sprite breaks out of his cabinet to find the kid who used to play him.'},
-  {id:11, t:'The Reckoning', y:2016, run:134, g:['Action','Thriller'], mood:'Brain-off', r:7.5, s:'nflx', a:'#3a1c71', b:'#d76d77', o:'A getaway driver takes one last job that turns out to be a trap decades in the making.'},
-  {id:12, t:'Wildflower', y:2021, run:107, g:['Drama','Romance'], mood:'Comfort', r:8.2, s:'hulu', a:'#43cea2', b:'#185a9d', o:'A botanist and a grieving widower plant a garden that outgrows both of their plans.'},
-  {id:13, t:'Static', y:2024, run:99, g:['Horror','Sci-Fi'], mood:'Intense', r:7.2, s:'prime', a:'#000428', b:'#004e92', o:'A radio host starts receiving broadcasts from a town that was wiped off the map in 1998.'},
-  {id:14, t:'Feast', y:2019, run:95, g:['Documentary'], mood:'Light', r:8.6, s:'appl', a:'#f12711', b:'#f5af19', o:'Five street cooks on three continents chase the same impossible perfect bite.'},
-  {id:15, t:'Paper Planes', y:2015, run:90, g:['Comedy','Drama'], mood:'Comfort', r:7.0, s:'dnp', a:'#56ccf2', b:'#2f80ed', o:'A shy kid and a world folding championship teach a burned-out dad how to aim again.'},
-  {id:16, t:'The Hollow', y:2023, run:116, g:['Fantasy','Thriller'], mood:'Mind-bending', r:7.7, s:'max', a:'#42275a', b:'#734b6d', o:'A cartographer maps a forest that rearranges itself around everyone\u2019s worst memory.'},
-  {id:17, t:'Overtime', y:2020, run:103, g:['Action','Comedy'], mood:'Brain-off', r:7.3, s:'nflx', a:'#eb3349', b:'#f45c43', o:'Two mismatched security guards accidentally foil the heist of the century, badly.'},
-  {id:18, t:'Quietly, Now', y:2018, run:120, g:['Drama'], mood:'Comfort', r:8.3, s:'hulu', a:'#334d50', b:'#cbcaa5', o:'A deaf pianist and her hearing brother learn to say goodbye in a language only they share.'},
-  {id:19, t:'Voidwalkers', y:2022, run:145, g:['Sci-Fi','Action'], mood:'Brain-off', r:7.6, s:'prime', a:'#360033', b:'#0b8793', o:'A crew of debt-strapped salvagers boards a derelict ship that doesn\u2019t want to be salvaged.'},
-  {id:20, t:'Marrow', y:2024, run:108, g:['Horror','Drama'], mood:'Intense', r:7.9, s:'max', a:'#2c3e50', b:'#4ca1af', o:'A hospice nurse begins to suspect the house she works in is keeping her patients from leaving.'},
-];
-// Registry so matches/watchlist can resolve titles from either source.
-const REG = {};
-const remember = list => list.forEach(m=>{ REG[m.id]=m; });
-remember(M);
-const movie = id => REG[id];
-
-// The simulated friend you connect with in the walkthrough:
-const ALEX = {
-  name:'Alex', avatar:'🎬', overlap:82,
-  wants:[1,5,7,12,16,19],       // both want to watch -> triggers "want" match
-  loved:[9,14,18],              // Alex has seen & loved -> "seen it" triggers rewatch match
-  genres:{'Sci-Fi':90,'Thriller':82,'Drama':68,'Comedy':55,'Horror':28},
-};
-const OTHER_CONNECTIONS = [
-  {name:'Sam', avatar:'🍿', overlap:64, mutual:[6,8,17,15], genres:{'Comedy':88,'Romance':74,'Drama':52,'Action':40,'Horror':18}},
-  {name:'Priya', avatar:'🎭', overlap:48, mutual:[14,18,20], genres:{'Documentary':84,'Drama':70,'Horror':60,'Animation':30,'Comedy':44}},
-];
-
-/* ============================= APP ============================= */
-function App({user,profile,saveProfile,demo}){
-  const [screen,setScreen] = useState('swipe');
-  const [localOnboarded,setLocalOnboarded] = useState(false);
-  const onboarded = demo ? localOnboarded : !!(profile && profile.onboarded);
-  const setOnboarded = v => { setLocalOnboarded(v); if(!demo) saveProfile({onboarded:v}); };
-
-  // A session is a shared room. Same-room and anytime use the identical model.
-  const [session,setSession] = useState(null);       // room code
-  const [members,setMembers] = useState({});
-  const [allSwipes,setAllSwipes] = useState([]);
-  const [seenMatches,setSeenMatches] = useState({});
-  const [services,setServices] = useState(['nflx','dnp','prime','max']);
-  const [filters,setFilters] = useState({genres:[], mood:'', decade:'Any', maxRun:180, dealbreakers:[]});
-  const [swipes,setSwipes] = useState({});           // id -> 'like'|'nope'|'super'|'seen'
-  const [matches,setMatches] = useState([]);         // {id,type:'want'|'rewatch'}
-  const [watchlist,setWatchlist] = useState([]);     // {id,watched,rating}
-  const [matchModal,setMatchModal] = useState(null); // {movie,type}
-  const [activeConn,setActiveConn] = useState(null);
-  const [notif,setNotif] = useState(1);
-  const [connectedTo,setConnectedTo] = useState(null); // name of current partner
-
-  const [remote,setRemote] = useState(null);
-  const [loading,setLoading] = useState(false);
-  const [apiError,setApiError] = useState(null);
-
-  // Pull a real queue from TMDB whenever services or filters change.
-  useEffect(()=>{
-    if(!TMDB_ON || !onboarded) return;
-    let dead = false;
-    setLoading(true); setApiError(null);
-    fetchDeck({services,filters})
-      .then(async list=>{
-        const head = await Promise.all(list.slice(0,4).map(enrich));
-        const full = [...head, ...list.slice(4)];
-        remember(full);
-        if(!dead) setRemote(full);
-      })
-      .catch(e=>{ if(!dead) setApiError(e.message); })
-      .finally(()=>{ if(!dead) setLoading(false); });
-    return ()=>{ dead = true; };
-  },[services,filters,onboarded]);
-
-  // build the swipe deck from filters + services, excluding already-swiped
-  const source = (TMDB_ON && remote) ? remote : M;
-  const deck = source.filter(m=>{
-    if(swipes[m.id]) return false;
-    if(TMDB_ON && remote) return true;   // TMDB already applied every filter
-    if(!services.includes(m.s)) return false;
-    if(filters.genres.length && !m.g.some(g=>filters.genres.includes(g))) return false;
-    if(filters.mood && m.mood!==filters.mood) return false;
-    if(filters.maxRun && m.run>filters.maxRun) return false;
-    if(filters.dealbreakers.some(d=>m.g.includes(d))) return false;
-    if(filters.decade!=='Any'){
-      const d = filters.decade;
-      const inDec = (d==='2020s'&&m.y>=2020)||(d==='2010s'&&m.y>=2010&&m.y<2020)||
-                    (d==='2000s'&&m.y>=2000&&m.y<2010)||(d==='90s'&&m.y>=1990&&m.y<2000)||
-                    (d==='80s & older'&&m.y<1990);
-      if(!inDec) return false;
-    }
-    return true;
+// Everyone's favourite genres push matching titles up. Nobody gets excluded.
+function rankDeck(items, members){
+  const votes = {};
+  Object.values(members||{}).forEach(mem=>{
+    (mem.genres||[]).forEach(g=>{ votes[GENRE_IDS[g]] = (votes[GENRE_IDS[g]]||0)+1; });
   });
+  const anyVotes = Object.keys(votes).length>0;
+  return items.map(m=>{
+    const score = anyVotes ? (m.gid||[]).reduce((n,g)=>n+(votes[g]||0),0) : 0;
+    return {...m, _score: score + Math.random()*0.9};   // jitter keeps rooms from repeating
+  }).sort((a,b)=>b._score-a._score);
+}
 
-  // Live sync: everyone in the room sees the same swipes and matches.
-  useEffect(()=>{
-    if(demo || !session) return;
-    const ref = db.collection('sessions').doc(session);
-    const offA = ref.onSnapshot(d=> setMembers((d.data()||{}).members||{}) );
-    const offB = ref.collection('swipes').onSnapshot(snap=>
-      setAllSwipes(snap.docs.map(d=>d.data())) );
-    return ()=>{ offA(); offB(); };
-  },[session,demo]);
+/* ============================= FIREBASE HELPERS ============================= */
+let pendingName = '';
+const googleProvider = () => {
+  const p = new firebase.auth.GoogleAuthProvider();
+  p.setCustomParameters({prompt:'select_account'});
+  return p;
+};
+const signIn = async () => {
+  try{ return await auth.signInWithPopup(googleProvider()); }
+  catch(e){
+    if(['auth/popup-blocked','auth/operation-not-supported-in-this-environment'].includes(e.code))
+      return auth.signInWithRedirect(googleProvider());
+    throw e;
+  }
+};
+const signInAnon = async name=>{
+  pendingName = (name||'').trim() || 'Guest';
+  const cred = await auth.signInAnonymously();
+  try{ await cred.user.updateProfile({displayName:pendingName}); }catch(e){}
+  return cred;
+};
+const signOutNow = () => auth.signOut();
+const isIOS = () => /iPhone|iPad|iPod/i.test(navigator.userAgent||'');
+const authMessage = e => ({
+  'auth/unauthorized-domain':"This address isn't authorized in Firebase yet.",
+  'auth/popup-blocked':'Your browser blocked the sign-in window. Try Safari or Chrome.',
+  'auth/popup-closed-by-user':'Sign-in was cancelled.',
+  'auth/cancelled-popup-request':'Sign-in was cancelled.',
+  'auth/network-request-failed':'Network problem. Check your connection and try again.',
+  'auth/internal-error':'Sign-in got interrupted. If you opened this from a text, open it in Safari instead.',
+}[e.code] || e.message);
 
-  // A match = every member of the room said yes to the same title.
+const newCode = () => String(Math.floor(100000 + Math.random()*900000));
+
+async function createRoom(uid, name, profile, slate){
+  const code = newCode();
+  await db.collection('sessions').doc(code).set({
+    host:uid, createdAt:Date.now(), slate,
+    members:{[uid]:{name:name||'Someone', joinedAt:Date.now(),
+      genres:profile.genres||[], dealbreakers:profile.dealbreakers||[]}}
+  });
+  return code;
+}
+async function joinRoom(raw, uid, name, profile){
+  const code = (raw||'').trim();
+  const ref = db.collection('sessions').doc(code);
+  const snap = await ref.get();
+  if(!snap.exists) throw new Error('No room with that code');
+  await ref.update({['members.'+uid]:{name:name||'Someone', joinedAt:Date.now(),
+    genres:profile.genres||[], dealbreakers:profile.dealbreakers||[]}});
+  return code;
+}
+const recordSwipe = (code,uid,m,dir) =>
+  db.collection('sessions').doc(code).collection('swipes').doc(uid+'_'+m.id).set({
+    uid, movieId:m.id, dir, title:m.t, poster:m.poster||null,
+    year:m.y||null, service:provName(m), ts:Date.now()
+  });
+const saveWatched = (uid,m,rewatch) =>
+  db.collection('users').doc(uid).collection('watched').doc(String(m.id)).set({
+    movieId:m.id, title:m.t, year:m.y||null, poster:m.poster||null,
+    service:provName(m), rewatch:!!rewatch, ts:Date.now()
+  }, {merge:true});
+
+/* ============================= ROOT (auth gate) ============================= */
+function Root(){
+  const [state,setState] = useState(FB_ON?'loading':'demo');
+  const [user,setUser] = useState(null);
+  const [profile,setProfile] = useState(null);
+  const [err,setErr] = useState(null);
+  const [busy,setBusy] = useState(false);
+
   useEffect(()=>{
-    if(demo || !session) return;
-    const ids = Object.keys(members);
-    if(ids.length < 2) return;
-    const byMovie = {};
-    allSwipes.forEach(sw=>{ (byMovie[sw.movieId] = byMovie[sw.movieId] || []).push(sw); });
-    Object.entries(byMovie).forEach(([mid,list])=>{
-      const yes = list.filter(x=>x.dir==='like'||x.dir==='super');
-      const seen = list.filter(x=>x.dir==='seen');
-      const all = yes.length===ids.length;
-      const rewatch = seen.length>0 && (yes.length+seen.length)===ids.length && seen.length===ids.length;
-      if((all||rewatch) && !seenMatches[mid]){
-        const any = list[0];
-        const m = movie(Number(mid)) || {id:Number(mid), t:any.title, poster:any.poster,
-                    providers:any.service?[any.service]:[], a:'#2b2140', b:'#4a3a6b', g:[], r:0};
-        REG[m.id] = m;
-        setSeenMatches(p=>({...p,[mid]:true}));
-        setMatches(x=> x.find(i=>i.id===m.id)? x : [...x,{id:m.id,type:rewatch?'rewatch':'want'}]);
-        setWatchlist(x=> x.find(i=>i.id===m.id)? x : [...x,{id:m.id,watched:false,rating:0}]);
-        setMatchModal({movie:m,type:rewatch?'rewatch':'want'});
-        setNotif(n=>n+1);
-      }
+    if(!FB_ON) return;
+    auth.getRedirectResult().catch(()=>{});
+  },[]);
+
+  useEffect(()=>{
+    if(!FB_ON) return;
+    return auth.onAuthStateChanged(async u=>{
+      if(!u){ setUser(null); setState('signedout'); return; }
+      setUser(u);
+      try{
+        const cfg = u.isAnonymous ? {exists:false}
+          : await db.collection('config').doc('allowlist').get();
+        if(cfg.exists){
+          const ok = (cfg.data().emails||[]).map(e=>String(e).toLowerCase());
+          if(!ok.includes(String(u.email||'').toLowerCase())){ setState('denied'); return; }
+        }
+        const ref = db.collection('users').doc(u.uid);
+        const snap = await ref.get();
+        if(!snap.exists){
+          const fresh = {email:u.email||null, name:u.displayName||pendingName||'Guest',
+            guest:!!u.isAnonymous, onboarded:false, profileDone:false, createdAt:Date.now(),
+            services:[], genres:[], dealbreakers:[]};
+          await ref.set(fresh); setProfile(fresh);
+        } else {
+          const d = snap.data();
+          setProfile({services:[],genres:[],dealbreakers:[],
+            profileDone:(d.services||[]).length>0,   // legacy profiles predate this flag
+            ...d});
+          ref.set({lastActive:Date.now()},{merge:true}).catch(()=>{});
+        }
+        setState('ready');
+      }catch(e){ console.error(e); setErr(e.message); setState('denied'); }
     });
-  },[allSwipes,members,session,demo]);
+  },[]);
 
-  // How many people in the room have said yes to the top card so far.
-  const yesCount = m => {
-    if(demo||!session||!m) return null;
-    const list = allSwipes.filter(s=>s.movieId===m.id && (s.dir==='like'||s.dir==='super'));
-    return {yes:list.length, total:Math.max(1,Object.keys(members).length)};
+  // merge:true so a patch works whether or not the doc already exists
+  const saveProfile = patch => {
+    setProfile(p=>({...(p||{}),...patch}));
+    if(user) db.collection('users').doc(user.uid).set(patch,{merge:true}).catch(e=>console.error(e));
   };
 
-  function handleSwipe(m, dir){
-    // dir: 'like' | 'nope' | 'super' | 'seen'
-    setSwipes(s=>({...s,[m.id]:dir}));
-    if(!demo && session){ recordSwipe(session,user.uid,m,dir).catch(e=>console.error(e)); return; }
-    const partner = connectedTo || 'Alex';
-    // Stand-in for a real partner until Firebase is wired up.
-    // With live TMDB ids we fake Alex's taste so the match moment still demos.
-    const live = TMDB_ON && remote;
-    const wants = live ? (m.id % 3 === 0) : ALEX.wants.includes(m.id);
-    const loved = live ? (m.id % 5 === 0) : ALEX.loved.includes(m.id);
-    if(partner==='Alex'){
-      if((dir==='like'||dir==='super') && wants) registerMatch(m,'want');
-      else if(dir==='seen' && loved) registerMatch(m,'rewatch');
-    }
-  }
-  const [sessBusy,setSessBusy] = useState(false);
-  const [sessErr,setSessErr] = useState(null);
+  if(state==='loading') return <div className="intro"><div className="introtop">
+    <div className="introart">🎬</div><p>Loading…</p></div></div>;
 
-  const doCreate = async ()=>{
-    setSessBusy(true); setSessErr(null);
-    try{ setSession(await createSession(user.uid, user.displayName||user.email)); }
-    catch(e){ setSessErr(e.message); } finally{ setSessBusy(false); }
-  };
-  const doJoin = async code=>{
-    setSessBusy(true); setSessErr(null);
-    try{ setSession(await joinSession(code, user.uid, user.displayName||user.email)); }
-    catch(e){ setSessErr(e.message); } finally{ setSessBusy(false); }
-  };
+  if(state==='signedout') return <SignInScreen busy={busy} error={err}
+    onSignIn={async()=>{ setBusy(true); setErr(null);
+      try{ await signIn(); }catch(e){ setErr(authMessage(e)); }finally{ setBusy(false); } }}
+    onAnon={async n=>{ setBusy(true); setErr(null);
+      try{ await signInAnon(n); }
+      catch(e){ setErr(e.code==='auth/operation-not-allowed'
+        ? 'Turn on Anonymous sign-in in Firebase, then try again.' : authMessage(e)); }
+      finally{ setBusy(false); } }}/>;
 
-  // Someone opened a ?join=CODE link.
-  useEffect(()=>{
-    if(demo || !user || session) return;
-    const code = new URLSearchParams(location.search).get('join');
-    if(code) doJoin(code);
-  },[user,demo]);
+  if(state==='denied') return <DeniedScreen email={user?.email} onSignOut={()=>signOutNow()}/>;
 
-  function registerMatch(m,type){
-    setMatches(x=> x.find(i=>i.id===m.id)? x : [...x,{id:m.id,type}]);
-    setWatchlist(x=> x.find(i=>i.id===m.id)? x : [...x,{id:m.id,watched:false,rating:0}]);
-    setMatchModal({movie:m,type});
-    setNotif(n=>n+1);
-  }
-
-  if(!onboarded){
-    return <Onboarding
-      services={services} setServices={setServices}
-      filters={filters} setFilters={setFilters}
-      onConnect={(name)=>setConnectedTo(name)}
-      onDone={()=>{setOnboarded(true); setScreen('swipe');}}
-      goScreen={setScreen}
-    />;
-  }
-
-  return (
-    <div className="app">
-      <TopBar session={session} members={members} notif={notif}
-        onBell={()=>{setScreen('matches'); setNotif(0);}}
-        onRoom={()=>setScreen('session')} onSettings={()=>setScreen('settings')} />
-
-      {screen==='swipe' && <SwipeScreen deck={deck} onSwipe={handleSwipe} swipes={swipes}
-        onOpenFilters={()=>setScreen('filters')} partner={connectedTo}
-        loading={loading} apiError={apiError} />}
-      {screen==='filters' && <FiltersScreen filters={filters} setFilters={setFilters}
-        services={services} setServices={setServices} onDone={()=>setScreen('swipe')}
-        onAbout={()=>setScreen('about')} />}
-      {screen==='about' && <AboutScreen onBack={()=>setScreen('settings')} />}
-      {screen==='session' && <SessionScreen session={session} members={members}
-        onCreate={doCreate} onJoin={doJoin} busy={sessBusy} error={sessErr}
-        onLeave={()=>{setSession(null); setAllSwipes([]); setMembers({});}}
-        onDone={()=>setScreen('swipe')} />}
-      {screen==='settings' && <SettingsScreen user={user} session={session}
-        onBack={()=>setScreen('swipe')} onAbout={()=>setScreen('about')}
-        onSession={()=>setScreen('session')} onSignOut={()=>signOutNow()}
-        onReplay={()=>{ setOnboarded(false); }} />}
-      {screen==='matches' && <MatchesScreen matches={matches} onGo={()=>setScreen('swipe')} />}
-      {screen==='watchlist' && <WatchlistScreen watchlist={watchlist} setWatchlist={setWatchlist} onGo={()=>setScreen('swipe')} />}
-      {screen==='connections' && <ConnectionsScreen matches={matches}
-        onOpen={(c)=>{setActiveConn(c); setScreen('connDetail');}} partner={connectedTo}/>}
-      {screen==='connDetail' && <ConnectionDetail conn={activeConn} onBack={()=>setScreen('connections')} />}
-
-      {['swipe','matches','watchlist','connections'].includes(screen) &&
-        <BottomNav screen={screen} setScreen={setScreen} notif={notif} setNotif={setNotif} />}
-
-      {matchModal && <MatchModal data={matchModal} partner={connectedTo}
-        onClose={()=>setMatchModal(null)} onList={()=>{setMatchModal(null); setScreen('watchlist');}} />}
-    </div>
-  );
+  return <App user={user} profile={profile} saveProfile={saveProfile} demo={!FB_ON}/>;
 }
 
-/* ============================= TOP BAR ============================= */
-function TopBar({session,members,notif,onBell,onRoom,onSettings}){
-  const n = Object.keys(members||{}).length;
-  return (
-    <div className="topbar">
-      <div className="brand"><span className="dot"></span>UnOpposed</div>
-      <div className="topbtns">
-        <button className="modechip" onClick={onRoom}>
-          <span className={session?'live':'async'}></span>
-          {session? `${session} · ${n}` : 'Start a room'}
-        </button>
-        <button className="iconbtn" onClick={onBell}>
-          <I.bell/>{notif>0 && <span className="badge">{notif}</span>}
-        </button>
-        <button className="iconbtn" onClick={onSettings}><I.sliders/></button>
-      </div>
-    </div>
-  );
-}
-
-/* ============================= SWIPE SCREEN ============================= */
-function SwipeScreen({deck,onSwipe,onOpenFilters,partner,loading,apiError}){
-  const [showHint,setShowHint] = useState(true);
-  useEffect(()=>{ const t=setTimeout(()=>setShowHint(false),3200); return ()=>clearTimeout(t); },[]);
-  const top = deck[0];
-
-  return (
-    <>
-      <div className="screen" style={{overflow:'hidden'}}>
-        <div className="deck">
-          {loading && deck.length===0 &&
-            <div className="empty">
-              <div className="film">🎞️</div>
-              <h2>Lining up your queue</h2>
-              <p>Pulling titles that are streaming on your services right now.</p>
-            </div>}
-          {apiError && !loading &&
-            <div className="empty">
-              <div className="film">⚠️</div>
-              <h2>Couldn't reach TMDB</h2>
-              <p>{apiError}</p>
-              <p style={{fontSize:12}}>Check TMDB_TOKEN near the top of index.html.</p>
-            </div>}
-          {!loading && !apiError && deck.length===0 &&
-            <div className="empty">
-              <div className="film">🎞️</div>
-              <h2>That's the reel</h2>
-              <p>You've swiped everything that fits. Loosen a filter or add a service to line up more.</p>
-              <button className="textbtn" onClick={onOpenFilters}>Adjust filters →</button>
-            </div>}
-          {deck.slice(0,3).reverse().map((m,i,arr)=>{
-            const depth = arr.length-1-i; // 0 = top
-            return <Card key={m.id} m={m} depth={depth}
-              onSwipe={onSwipe} isTop={depth===0} partner={partner}/>;
-          })}
-          {top && showHint &&
-            <div className="hint"><div className="hand">👆</div><div>Swipe right for yes, left for pass</div></div>}
-        </div>
-      </div>
-      {top && <ActionBar m={top} onSwipe={onSwipe}/>}
-    </>
-  );
-}
-
-function Card({m,depth,onSwipe,isTop,partner}){
-  const ref = useRef(null);
-  const [drag,setDrag] = useState({x:0,y:0,active:false});
-  const [expanded,setExpanded] = useState(false);
-  const [seen,setSeen] = useState(false);
-  const start = useRef({x:0,y:0});
-
-  const down = e=>{ if(!isTop) return; start.current={x:e.clientX,y:e.clientY}; setDrag(d=>({...d,active:true})); ref.current.setPointerCapture(e.pointerId); };
-  const move = e=>{ if(!drag.active) return; setDrag({x:e.clientX-start.current.x, y:e.clientY-start.current.y, active:true}); };
-  const up = e=>{
-    if(!drag.active) return;
-    const {x,y}=drag;
-    if(y<-120 && Math.abs(x)<90){ fly(0,-800); setTimeout(()=>onSwipe(m,'super'),180); return; }
-    if(x>120){ fly(800,y); setTimeout(()=>onSwipe(m,'like'),180); return; }
-    if(x<-120){ fly(-800,y); setTimeout(()=>onSwipe(m,'nope'),180); return; }
-    setDrag({x:0,y:0,active:false});
-  };
-  const fly = (x,y)=> setDrag({x,y,active:false,flung:true});
-
-  const rot = drag.x/18;
-  const yesOp = Math.max(0, Math.min(1, drag.x/120));
-  const noOp = Math.max(0, Math.min(1, -drag.x/120));
-  const supOp = Math.max(0, Math.min(1, -drag.y/120)) * (Math.abs(drag.x)<90?1:0);
-
-  const style = {
-    transform:`translate(${drag.x}px, ${drag.y}px) rotate(${rot}deg) scale(${1-depth*0.04})`,
-    transition: drag.active? 'none':'transform .35s cubic-bezier(.2,.9,.3,1)',
-    opacity: 1-depth*0.15,
-    zIndex: 10-depth,
-    pointerEvents: isTop?'auto':'none',
-  };
-
-  return (
-    <div ref={ref} className={"card"+(expanded?' expanded':'')} style={style}
-      onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up}>
-      <div className="poster" style={m.poster
-        ? {backgroundImage:`url(${m.poster})`, backgroundSize:'cover', backgroundPosition:'center'}
-        : {background:`linear-gradient(150deg, ${m.a}, ${m.b})`}}></div>
-      <div className="grain"></div>
-      {!m.poster && <div className="postertitle">{m.t}</div>}
-      <div className="glowedge" style={{opacity:yesOp*0.9}}></div>
-
-      <div className="stamp yes" style={{opacity:yesOp}}>Yes</div>
-      <div className="stamp no" style={{opacity:noOp}}>Pass</div>
-      <div className="stamp sup" style={{opacity:supOp}}>★ Must see</div>
-
-      <button className={"seenpill"+(seen?' on':'')}
-        onPointerDown={e=>e.stopPropagation()}
-        onClick={()=>{ setSeen(true); onSwipe(m,'seen'); }}>
-        <I.eye/> {seen?'Seen it':'I\u2019ve seen this'}
-      </button>
-
-      <div className="cardbody" onClick={()=>setExpanded(x=>!x)}>
-        <div className="chips">
-          <span className="chip svc">{provName(m)}</span>
-          {m.g.slice(0,2).map(g=><span key={g} className="chip">{g}</span>)}
-          <span className="chip">{m.mood}</span>
-        </div>
-        <h2>{m.t}</h2>
-        <div className="meta">
-          <span className="rate">★ {m.r.toFixed(1)}</span>
-          <span>{m.y}</span>{m.run? <><span>·</span><span>{m.run} min</span></> : null}
-          <span style={{marginLeft:'auto',display:'flex',alignItems:'center',gap:5,color:'var(--glow)'}}><I.play/> Trailer</span>
-        </div>
-        <div className="why"><I.spark style={{width:14,height:14}}/> On {provName(m)} · matches your {m.g[0]} pick</div>
-        <div className="overview">{m.o}</div>
-      </div>
-    </div>
-  );
-}
-
-function ActionBar({m,onSwipe}){
-  return (
-    <div className="actions">
-      <button className="bulb nope" onClick={()=>onSwipe(m,'nope')} aria-label="Pass"><I.x/></button>
-      <button className="bulb sm seen" onClick={()=>onSwipe(m,'seen')} aria-label="Seen it"><I.eye/></button>
-      <button className="bulb like" onClick={()=>onSwipe(m,'like')} aria-label="Yes"><I.heart/></button>
-      <button className="bulb sm super" onClick={()=>onSwipe(m,'super')} aria-label="Must see"><I.star/></button>
-    </div>
-  );
-}
-
-/* ============================= FILTERS ============================= */
-function FiltersScreen({filters,setFilters,services,setServices,onDone,onAbout=()=>{}}){
-  const tg = (key,val)=> setFilters(f=>({...f,[key]: f[key].includes(val)? f[key].filter(x=>x!==val):[...f[key],val]}));
-  return (
-    <div className="screen"><div className="pad">
-      <div className="head"><h1>Set the vibe</h1><p>Only titles on your services get queued. Everything here is optional.</p></div>
-
-      <div className="sectiontitle">Your services</div>
-      <div className="svcgrid">
-        {SERVICES.map(s=>{ const on=services.includes(s.id); return (
-          <button key={s.id} className={"svccard"+(on?' on':'')}
-            onClick={()=>setServices(v=> on? v.filter(x=>x!==s.id):[...v,s.id])}>
-            <span className="sw" style={{background:s.c}}>{s.sw}</span>{s.name}
-            <span className="tick"><I.check/></span>
-          </button>);})}
-      </div>
-
-      <div className="sectiontitle">Genres you're feeling</div>
-      <div className="grid">
-        {GENRES.map(g=><button key={g} className={"selchip"+(filters.genres.includes(g)?' on':'')} onClick={()=>tg('genres',g)}>{g}</button>)}
-      </div>
-
-      <div className="sectiontitle">Mood</div>
-      <div className="grid">
-        {MOODS.map(mo=><button key={mo} className={"selchip"+(filters.mood===mo?' on':'')}
-          onClick={()=>setFilters(f=>({...f,mood: f.mood===mo?'':mo}))}>{mo}</button>)}
-      </div>
-
-      <div className="sectiontitle">Time period</div>
-      <div className="grid">
-        {DECADES.map(d=><button key={d} className={"selchip"+(filters.decade===d?' on':'')}
-          onClick={()=>setFilters(f=>({...f,decade:d}))}>{d}</button>)}
-      </div>
-
-      <div className="sectiontitle">How long tonight? · up to {filters.maxRun} min</div>
-      <input className="slider" type="range" min="60" max="180" step="5" value={filters.maxRun}
-        onChange={e=>setFilters(f=>({...f,maxRun:+e.target.value}))}/>
-      <div style={{display:'flex',justifyContent:'space-between',fontSize:12,color:'var(--mist)'}}><span>1 hr</span><span>3 hr</span></div>
-
-      <div className="sectiontitle">Dealbreakers · never show these</div>
-      <div className="grid">
-        {GENRES.map(g=><button key={g} className={"selchip danger"+(filters.dealbreakers.includes(g)?' on':'')} onClick={()=>tg('dealbreakers',g)}>{g}</button>)}
-      </div>
-
-      <button className="cta" onClick={onDone}>Show me the queue</button>
-      <button className="ghostcta" onClick={onAbout}>About & credits</button>
-      <p style={{fontSize:11.5,color:'var(--mist)',textAlign:'center',lineHeight:1.5,margin:'14px 2px 0'}}>
-        This product uses the TMDB API but is not endorsed or certified by TMDB.
-        Streaming availability provided by JustWatch.
-      </p>
-    </div></div>
-  );
-}
-
-/* ============================= MATCHES ============================= */
-function MatchesScreen({matches,onGo}){
-  return (
-    <div className="screen"><div className="pad">
-      <div className="head"><h1>Matches</h1><p>Titles you both said yes to. Pick one and press play.</p></div>
-      {matches.length===0 &&
-        <div style={{textAlign:'center',padding:'50px 20px',color:'var(--mist)'}}>
-          <div style={{fontSize:38}}>✨</div>
-          <p style={{fontWeight:600,marginTop:10}}>No matches yet</p>
-          <p style={{fontSize:13}}>Keep swiping — when you and your partner both like the same film, it lands here.</p>
-          <button className="textbtn" onClick={onGo}>Back to swiping →</button>
-        </div>}
-      {matches.map(({id,type})=>{ const m=movie(id); return (
-        <div className="row" key={id}>
-          <div className="thumb" style={{background:`linear-gradient(150deg,${m.a},${m.b})`}}><div className="t"></div></div>
-          <div className="rowmain">
-            <div className="tt">{m.t}</div>
-            <div className="sub">{provName(m)} · {m.run} min · ★ {m.r.toFixed(1)}</div>
-          </div>
-          <span className={"tag "+(type==='rewatch'?'rewatch':'want')}>{type==='rewatch'?'Rewatch':'Both want'}</span>
-        </div>);})}
-    </div></div>
-  );
-}
-
-/* ============================= WATCHLIST ============================= */
-function WatchlistScreen({watchlist,setWatchlist,onGo}){
-  const setRating=(id,r)=>setWatchlist(w=>w.map(i=>i.id===id?{...i,rating:r}:i));
-  const toggle=(id)=>setWatchlist(w=>w.map(i=>i.id===id?{...i,watched:!i.watched}:i));
-  return (
-    <div className="screen"><div className="pad">
-      <div className="head"><h1>Shared watchlist</h1><p>Every match lands here. Mark what you've watched and rate it together.</p></div>
-      {watchlist.length===0 &&
-        <div style={{textAlign:'center',padding:'50px 20px',color:'var(--mist)'}}>
-          <div style={{fontSize:38}}>🍿</div>
-          <p style={{fontWeight:600,marginTop:10}}>Nothing saved yet</p>
-          <p style={{fontSize:13}}>Your matches build this list automatically.</p>
-          <button className="textbtn" onClick={onGo}>Start swiping →</button>
-        </div>}
-      {watchlist.map(({id,watched,rating})=>{ const m=movie(id); return (
-        <div className="row" key={id} style={{alignItems:'flex-start'}}>
-          <div className="thumb" style={{background:`linear-gradient(150deg,${m.a},${m.b})`,opacity:watched?.5:1}}></div>
-          <div className="rowmain">
-            <div className="tt">{m.t}</div>
-            <div className="sub">{provName(m)} · {m.run} min</div>
-            <div style={{display:'flex',alignItems:'center',gap:10,marginTop:8}}>
-              <div className="stars">
-                {[1,2,3,4,5].map(n=><span key={n} onClick={()=>setRating(id,n)} style={{color:n<=rating?'var(--glow)':'var(--haze)'}}>
-                  {n<=rating? <I.star style={{width:18,height:18}}/> : <I.starO/>}</span>)}
-              </div>
-              <button className={"watchtoggle"+(watched?' on':'')} onClick={()=>toggle(id)}>
-                {watched?'✓ Watched':'Mark watched'}</button>
-            </div>
-          </div>
-        </div>);})}
-    </div></div>
-  );
-}
-
-/* ============================= CONNECTIONS ============================= */
-function ConnectionsScreen({matches,onOpen,partner}){
-  const you = {name: partner||'Alex', avatar:ALEX.avatar, overlap:ALEX.overlap, genres:ALEX.genres,
-    mutual: matches.map(x=>x.id).length? matches.map(x=>x.id) : ALEX.wants.slice(0,3)};
-  const list = [you, ...OTHER_CONNECTIONS];
-  return (
-    <div className="screen"><div className="pad">
-      <div className="head"><h1>Your people</h1><p>Open anyone to revisit what you both love — no new session needed.</p></div>
-      {list.map((c,i)=>(
-        <button key={i} className="row" style={{width:'100%',textAlign:'left'}} onClick={()=>onOpen(c)}>
-          <div className="thumb" style={{background:'var(--velvet2)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:26,width:52,height:52,borderRadius:14}}>{c.avatar}</div>
-          <div className="rowmain">
-            <div className="tt">{c.name}{i===0 && <span style={{color:'var(--ok)',fontSize:12,fontWeight:600}}> · connected</span>}</div>
-            <div className="sub">{c.mutual.length} shared picks</div>
-          </div>
-          <div style={{textAlign:'right'}}>
-            <div style={{fontFamily:'Bricolage Grotesque',fontWeight:800,fontSize:20,color:'var(--glow)'}}>{c.overlap}%</div>
-            <div style={{fontSize:10,color:'var(--mist)'}}>in sync</div>
-          </div>
-        </button>
-      ))}
-    </div></div>
-  );
-}
-
-function ConnectionDetail({conn,onBack}){
-  if(!conn) return null;
-  const genres = Object.entries(conn.genres).sort((a,b)=>b[1]-a[1]);
-  return (
-    <div className="screen"><div className="pad">
-      <button className="iconbtn" onClick={onBack} style={{marginBottom:12}}><I.back/></button>
-      <div style={{display:'flex',alignItems:'center',gap:14,marginBottom:6}}>
-        <div style={{width:60,height:60,borderRadius:18,background:'var(--velvet2)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:30}}>{conn.avatar}</div>
-        <div>
-          <h1 style={{fontSize:26}}>{conn.name}</h1>
-          <p style={{color:'var(--mist)',fontSize:14,margin:'2px 0 0'}}>{conn.overlap}% taste overlap</p>
-        </div>
-      </div>
-
-      <div className="sectiontitle">Where your taste lines up</div>
-      {genres.map(([g,v])=>(
-        <div key={g} style={{marginBottom:11}}>
-          <div style={{display:'flex',justifyContent:'space-between',fontSize:13,marginBottom:5}}><span>{g}</span><span className="muted">{v}%</span></div>
-          <div style={{height:8,borderRadius:999,background:'var(--haze)'}}>
-            <div style={{height:'100%',width:v+'%',borderRadius:999,background:'linear-gradient(90deg,var(--glow),var(--rose))'}}></div>
-          </div>
-        </div>
-      ))}
-
-      <div className="sectiontitle">You both love</div>
-      {conn.mutual.map(id=>{ const m=movie(id); if(!m) return null; return (
-        <div className="row" key={id}>
-          <div className="thumb" style={{background:`linear-gradient(150deg,${m.a},${m.b})`}}></div>
-          <div className="rowmain"><div className="tt">{m.t}</div><div className="sub">{provName(m)} · {m.g.join(', ')}</div></div>
-        </div>);})}
-    </div></div>
-  );
-}
-
-/* ============================= ABOUT / CREDITS ============================= */
-function AboutScreen({onBack}){
-  const box = {background:'var(--velvet)',border:'1px solid var(--haze)',borderRadius:16,padding:16,marginBottom:4};
-  return (
-    <div className="screen"><div className="pad">
-      <button className="iconbtn" onClick={onBack} style={{marginBottom:12}}><I.back/></button>
-      <div className="head"><h1>About & credits</h1>
-        <p>UnOpposed is a personal, non-commercial project.</p></div>
-
-      <div className="sectiontitle">Movie & TV data</div>
-      <div style={box}>
-        {/* Save an approved TMDB logo as tmdb-logo.svg next to index.html in your repo. */}
-        <img src="tmdb-logo.svg" alt="The Movie Database"
-             style={{height:24,display:'block',marginBottom:12}}
-             onError={e=>{ e.target.style.display='none'; }}/>
-        <p style={{fontSize:14,lineHeight:1.55,margin:0}}>
-          This product uses the TMDB API but is not endorsed or certified by TMDB.
-        </p>
-      </div>
-
-      <div className="sectiontitle">Where to watch</div>
-      <div style={box}>
-        <p style={{fontSize:14,lineHeight:1.55,margin:0,color:'#d8cff0'}}>
-          Streaming availability data is provided by JustWatch.
-        </p>
-      </div>
-
-      <div className="sectiontitle">Good to know</div>
-      <div style={box}>
-        <p style={{fontSize:13.5,lineHeight:1.6,margin:0,color:'#d8cff0'}}>
-          UnOpposed never asks for your streaming passwords. You just tell it which
-          services you subscribe to, and it only shows titles available on those.
-        </p>
-      </div>
-    </div></div>
-  );
-}
-
-
-/* ============================= AUTH + SESSION + SETTINGS ============================= */
+/* ============================= SIGN IN ============================= */
 function SignInScreen({onSignIn,onAnon,busy,error}){
   const [name,setName] = useState('');
   const [alt,setAlt] = useState(false);
@@ -1063,11 +647,11 @@ function SignInScreen({onSignIn,onAnon,busy,error}){
       <div className="introtop">
         <div className="introart">🎬</div>
         <h1>Un<span className="hl">Opposed</span></h1>
-        <p>Swipe through movies with the people you actually watch with. Sign in to get started.</p>
+        <p>Everyone in the room swipes. When nobody objects, that's what you watch.</p>
         {error && <p style={{color:'var(--rose)',fontSize:13,marginTop:14,lineHeight:1.5}}>{error}</p>}
         {isIOS() &&
           <p style={{fontSize:12.5,color:'var(--mist)',marginTop:18,lineHeight:1.5,maxWidth:270}}>
-            Opened this from a text? Tap <b style={{color:'var(--text)'}}>•••</b> then
+            Opened from a text? Tap <b style={{color:'var(--text)'}}>•••</b> then
             <b style={{color:'var(--text)'}}> Open in Safari</b> first — sign-in won't work inside
             the Messages browser.
           </p>}
@@ -1078,8 +662,7 @@ function SignInScreen({onSignIn,onAnon,busy,error}){
             {busy?'Opening Google…':'Continue with Google'}</button>
           <button className="ghostcta" onClick={()=>setAlt(true)}>Trouble signing in? Use a name</button>
         </> : <>
-          <input value={name} onChange={e=>setName(e.target.value)} placeholder="Your name"
-            maxLength={20}
+          <input value={name} onChange={e=>setName(e.target.value)} placeholder="Your name" maxLength={20}
             style={{width:'100%',padding:'15px',borderRadius:16,background:'var(--velvet)',
               border:'1px solid var(--haze)',color:'var(--text)',fontSize:16,textAlign:'center'}}/>
           <button className="cta" onClick={()=>onAnon(name)} disabled={busy||!name.trim()}>
@@ -1097,8 +680,8 @@ function DeniedScreen({email,onSignOut}){
       <div className="introtop">
         <div className="introart">🔒</div>
         <h1>Not on the list yet</h1>
-        <p><b style={{color:'var(--text)'}}>{email}</b> hasn't been added. Ask whoever sent you the
-        link to add this address, then sign in again.</p>
+        <p><b style={{color:'var(--text)'}}>{email}</b> hasn't been added. Ask whoever sent you
+        the link to add this address, then sign in again.</p>
       </div>
       <div className="introfoot">
         <button className="ghostcta" onClick={onSignOut}>Try a different account</button>
@@ -1107,154 +690,380 @@ function DeniedScreen({email,onSignOut}){
   );
 }
 
-function SessionScreen({session,members,onCreate,onJoin,onLeave,onDone,busy,error}){
-  const [code,setCode] = useState('');
-  const list = Object.values(members||{});
-  const link = session ? `${location.origin}${location.pathname}?join=${session}` : '';
+/* ============================= THE TOUR (self-contained) =============================
+   Everything here is fake and lives only in this component. No real settings are
+   touched, and none of these people or rooms exist once the tour is done.
+   ====================================================================================*/
+const TOUR_CARDS = [
+  {id:'t1', t:'Neon Requiem', y:2023, run:118, r:8.1, a:'#5b2a86', b:'#ff5c7a',
+   gid:[878,53], providers:['Netflix'], o:'Sample card — this is what a real title looks like.'},
+  {id:'t2', t:'Comet Kids', y:2021, run:92, r:8.4, a:'#f7971e', b:'#ffd200',
+   gid:[16,14], providers:['Disney+'], o:'Sample card.'},
+];
 
-  if(session){
-    return (
-      <div className="screen"><div className="pad">
-        <div className="head"><h1>Your room</h1><p>Anyone with this code can swipe along with you.</p></div>
-        <div className="qrwrap" style={{marginTop:20}}>
-          <div className="code" style={{fontSize:40}}>{session}</div>
-          <div className="muted" style={{fontSize:13,textAlign:'center',maxWidth:250}}>
-            Read the code out loud, or share the link.
-          </div>
-          <button className="ghostcta" style={{maxWidth:260}} onClick={()=>{
-            if(navigator.share) navigator.share({title:'Join my UnOpposed room',url:link});
-            else { navigator.clipboard?.writeText(link); alert('Link copied'); }
-          }}>Share join link</button>
+function Tour({onDone}){
+  const [step,setStep] = useState(0);
+  const steps = [
+    {art:'🎬', h:<>Nobody argues, <span className="hl">nobody loses</span></>,
+     p:"UnOpposed is a group game. Everyone in the room swipes the same movies. When nobody objects to a title, that's the pick."},
+    {art:'🔢', h:<>Start a room, <span className="hl">share the number</span></>,
+     p:'One person starts a room and reads out a six-digit code. Everyone else taps Join and types it in. That group is your room for the night.'},
+    {art:'🎚️', h:<>Set <span className="hl">the Slate</span></>,
+     p:"Whoever starts the room sets tonight's mood, how long you've got, and how old the movies can be. One set of rules for everyone — that's what keeps matches likely."},
+    {art:'👉', h:<>Swipe <span className="hl">together</span></>,
+     p:'Right for yes, left for pass, up for a must-see. Already seen it? Tap "Seen it" and it goes in your library.',
+     demo:'swipe'},
+    {art:'🎉', h:<>Watch the <span className="hl">votes stack up</span></>,
+     p:"Every swipe counts. Your Matches tab ranks what the room likes best — 3 of 4, 2 of 4 — updating live. When a title gets everyone, it lights up on every phone.",
+     demo:'match'},
+    {art:'🎲', h:<>Stuck? <span className="hl">Play the Wildcard</span></>,
+     p:"If nothing's landing, anyone can call a Wildcard. It picks from what fits your Slate, and whatever it lands on is what you watch. No arguing."},
+    {art:'👤', h:<>Your <span className="hl">profile</span></>,
+     p:"Your services, favourite genres and dealbreakers are saved once and reused every night. You'll set those up next."},
+  ];
+  const s = steps[step];
+  return (
+    <div className="intro">
+      <div className="tourbadge">Tour · {step+1} of {steps.length}</div>
+      <div className="introtop">
+        {s.demo==='swipe' &&
+          <div style={{width:200,height:270,position:'relative',marginBottom:24}}>
+            {TOUR_CARDS.map((c,i)=>(
+              <div key={c.id} style={{position:'absolute',inset:0,borderRadius:20,
+                background:`linear-gradient(150deg,${c.a},${c.b})`,
+                transform:`rotate(${i?6:-4}deg) scale(${i?0.95:1})`,
+                boxShadow:'0 20px 40px rgba(0,0,0,.5)',display:'flex',alignItems:'flex-end',
+                padding:14,fontFamily:'Bricolage Grotesque',fontWeight:800,fontSize:19,
+                zIndex:i?1:2}}>{c.t}</div>
+            ))}
+            <div className="stamp yes" style={{opacity:1,top:18,left:14,fontSize:19,zIndex:3}}>Yes</div>
+          </div>}
+        {s.demo==='match' &&
+          <div style={{marginBottom:22}}>
+            <div className="bulbrow"><i></i><i></i><i></i><i></i><i></i></div>
+            <div className="marquee" style={{fontSize:30}}>UNOPPOSED</div>
+            <div className="bulbrow"><i></i><i></i><i></i><i></i><i></i></div>
+          </div>}
+        {!s.demo && <div className="introart">{s.art}</div>}
+        <h1>{s.h}</h1>
+        <p>{s.p}</p>
+        <div className="dots">{steps.map((_,i)=><i key={i} className={i===step?'on':''}></i>)}</div>
+      </div>
+      <div className="introfoot">
+        <button className="cta" onClick={()=> step<steps.length-1? setStep(step+1) : onDone()}>
+          {step<steps.length-1 ? 'Next' : 'Set up my profile'}</button>
+        <div style={{display:'flex',gap:10}}>
+          {step>0 &&
+            <button className="ghostcta" style={{flex:1}} onClick={()=>setStep(step-1)}>Back</button>}
+          {step<steps.length-1 &&
+            <button className="ghostcta" style={{flex:1}} onClick={onDone}>Skip tour</button>}
         </div>
-        <div className="sectiontitle">In the room · {list.length}</div>
-        {list.map((mem,i)=>(
-          <div className="row" key={i}>
-            <div className="thumb" style={{width:44,height:44,borderRadius:14,background:'var(--velvet2)',
-              display:'flex',alignItems:'center',justifyContent:'center',fontSize:20}}>🍿</div>
-            <div className="rowmain"><div className="tt">{mem.name}</div></div>
-          </div>
-        ))}
-        {list.length<2 &&
-          <p style={{fontSize:13,color:'var(--mist)',textAlign:'center',marginTop:10}}>
-            Waiting for someone else to join. Matches need at least two people.</p>}
-        <button className="cta" onClick={onDone}>Start swiping</button>
-        <button className="ghostcta" onClick={onLeave}>Leave room</button>
-      </div></div>
-    );
-  }
-
-  return (
-    <div className="screen"><div className="pad">
-      <div className="head"><h1>Watch together</h1>
-        <p>One person starts a room, everyone else joins with the code.</p></div>
-      {error && <p style={{color:'var(--rose)',fontSize:13}}>{error}</p>}
-      <button className="cta" onClick={onCreate} disabled={busy}>
-        {busy?'Setting up…':'Start a room'}</button>
-      <div className="sectiontitle">Or join one</div>
-      <input value={code} onChange={e=>setCode(e.target.value.toUpperCase())}
-        placeholder="ABCDE" maxLength={5} autoCapitalize="characters"
-        style={{width:'100%',padding:'16px',borderRadius:16,background:'var(--velvet)',
-          border:'1px solid var(--haze)',color:'var(--text)',fontSize:26,textAlign:'center',
-          fontFamily:'Bricolage Grotesque',fontWeight:800,letterSpacing:'.25em'}}/>
-      <button className="ghostcta" onClick={()=>onJoin(code)} disabled={busy||code.length<5}>Join room</button>
-      <p style={{fontSize:12.5,color:'var(--mist)',textAlign:'center',marginTop:16,lineHeight:1.5}}>
-        You can swipe on your own too — matches just appear whenever the others catch up.
-      </p>
-    </div></div>
+      </div>
+    </div>
   );
 }
 
-function SettingsScreen({user,session,onBack,onReplay,onSignOut,onAbout,onSession}){
-  return (
-    <div className="screen"><div className="pad">
-      <button className="iconbtn" onClick={onBack} style={{marginBottom:12}}><I.back/></button>
-      <div className="head"><h1>Settings</h1></div>
-      {user &&
-        <div className="row">
-          <div className="thumb" style={{width:48,height:48,borderRadius:16,background:'var(--velvet2)',
-            display:'flex',alignItems:'center',justifyContent:'center',fontSize:22}}>🎬</div>
-          <div className="rowmain">
-            <div className="tt">{user.displayName||'Signed in'}</div>
-            <div className="sub">{user.email}</div>
-          </div>
-        </div>}
-      <div className="sectiontitle">Session</div>
-      <button className="ghostcta" style={{marginTop:0}} onClick={onSession}>
-        {session? `Room ${session} · manage` : 'Start or join a room'}</button>
-      <div className="sectiontitle">App</div>
-      <button className="ghostcta" style={{marginTop:0}} onClick={onReplay}>Replay the walkthrough</button>
-      <button className="ghostcta" onClick={onAbout}>About & credits</button>
-      {user && <button className="ghostcta" style={{color:'var(--rose)'}} onClick={onSignOut}>Sign out</button>}
-    </div></div>
-  );
-}
+/* ============================= APP ============================= */
+function App({user,profile,saveProfile,demo}){
+  const [screen,setScreen] = useState('swipe');
+  const [localProfile,setLocalProfile] = useState({services:[],genres:[],dealbreakers:[],onboarded:false,profileDone:false});
+  const P = demo ? localProfile : (profile||{services:[],genres:[],dealbreakers:[]});
+  const save = demo ? (patch=>setLocalProfile(p=>({...p,...patch}))) : saveProfile;
 
-/* ============================= ROOT (auth gate) ============================= */
-function Root(){
-  const [state,setState] = useState(FB_ON?'loading':'demo');
-  const [user,setUser] = useState(null);
-  const [profile,setProfile] = useState(null);
-  const [err,setErr] = useState(null);
+  const onboarded = !!P.onboarded;
+  const needsProfile = onboarded && !P.profileDone;
+
+  const [room,setRoom] = useState(null);
+  const [members,setMembers] = useState({});
+  const [slate,setSlate] = useState(null);
+  const [allSwipes,setAllSwipes] = useState([]);
+  const [seenMatches,setSeenMatches] = useState({});
+
+  const [deck,setDeck] = useState([]);
+  const [usedPages,setUsedPages] = useState([]);
+  const [refilling,setRefilling] = useState(false);
+  const [maxPages,setMaxPages] = useState(1);
+  const [loading,setLoading] = useState(false);
+  const [apiError,setApiError] = useState(null);
+
+  const [swipes,setSwipes] = useState({});
+  const [matches,setMatches] = useState([]);
+  const [watchlist,setWatchlist] = useState([]);
+  const [watched,setWatched] = useState([]);
+  const [matchModal,setMatchModal] = useState(null);
+  const [wildcard,setWildcard] = useState(null);
+  const [seenPrompt,setSeenPrompt] = useState(null);
+  const [notif,setNotif] = useState(0);
   const [busy,setBusy] = useState(false);
+  const [roomErr,setRoomErr] = useState(null);
+
+  /* ---- live room sync ---- */
+  useEffect(()=>{
+    if(demo || !room) return;
+    const ref = db.collection('sessions').doc(room);
+    const offA = ref.onSnapshot(d=>{
+      const data = d.data()||{};
+      setMembers(data.members||{});
+      if(data.slate) setSlate(data.slate);
+    });
+    const offB = ref.collection('swipes').onSnapshot(s=> setAllSwipes(s.docs.map(x=>x.data())) );
+    return ()=>{ offA(); offB(); };
+  },[room,demo]);
+
+  /* ---- watched library ---- */
+  useEffect(()=>{
+    if(demo || !user) return;
+    return db.collection('users').doc(user.uid).collection('watched')
+      .onSnapshot(s=> setWatched(s.docs.map(d=>d.data())) );
+  },[user,demo]);
+
+  /* ---- build the deck from the Slate ---- */
+  const dealbreakers = Array.from(new Set([
+    ...(P.dealbreakers||[]),
+    ...Object.values(members).flatMap(m=>m.dealbreakers||[]),
+  ]));
 
   useEffect(()=>{
-    if(!FB_ON) return;
-    auth.getRedirectResult().catch(e=>setErr(authMessage(e)));
-    return auth.onAuthStateChanged(async u=>{
-      if(!u){ setUser(null); setState('signedout'); return; }
-      setUser(u);
+    if(!slate) return;
+    if(slate.mode==='seen'){
+      const lib = watched.filter(w=>w.rewatch).map(w=>({
+        id:w.movieId, t:w.title, y:w.year, poster:w.poster, providers:[w.service],
+        gid:[], r:0, a:'#2b2140', b:'#4a3a6b', o:''}));
+      remember(lib); setDeck(shuffle(lib)); return;
+    }
+    if(!TMDB_ON){
+      const pool = DEMO.filter(m=>(slate.services||[]).includes(m.s));
+      setDeck(rankDeck(shuffle(pool.length?pool:DEMO), members)); return;
+    }
+    let dead=false; setLoading(true); setApiError(null);
+    (async()=>{
       try{
-        // If no allowlist doc exists yet, everyone signed in is allowed.
-        const cfg = u.isAnonymous ? {exists:false} : await db.collection('config').doc('allowlist').get();
-        if(cfg.exists){
-          const ok = (cfg.data().emails||[]).map(e=>String(e).toLowerCase());
-          if(!ok.includes(String(u.email||'').toLowerCase())){ setState('denied'); return; }
+        const first = await fetchSlate({slate, dealbreakers, page:1});
+        const span = Math.max(1, Math.min(first.pages, 15));
+        // three random pages: a deep deck, and no two rooms open on the same title
+        const picks=[];
+        while(picks.length < Math.min(3, span)){
+          const p = 1 + Math.floor(Math.random()*span);
+          if(!picks.includes(p)) picks.push(p);
         }
-        const ref = db.collection('users').doc(u.uid);
-        const snap = await ref.get();
-        if(!snap.exists){
-          const fresh = {email:u.email||null, name:u.displayName||pendingName||'Guest',
-                         guest:!!u.isAnonymous, onboarded:false, createdAt:Date.now()};
-          await ref.set(fresh); setProfile(fresh);
-        } else {
-          setProfile(snap.data());
-          ref.update({lastActive:Date.now()}).catch(()=>{});
-        }
-        setState('ready');
-      }catch(e){ console.error(e); setErr(e.message); setState('denied'); }
-    });
-  },[]);
+        const pages = await Promise.all(picks.map(p =>
+          p===1 ? first : fetchSlate({slate, dealbreakers, page:p})));
+        const seen=new Set();
+        const items = pages.flatMap(r=>r.items)
+          .filter(m => seen.has(m.id) ? false : (seen.add(m.id), true));
+        const ranked = rankDeck(shuffle(items), members);
+        const head = await Promise.all(ranked.slice(0,4).map(enrich));
+        const full = [...head, ...ranked.slice(4)];
+        remember(full);
+        if(!dead){ setDeck(full); setUsedPages(picks); setMaxPages(span); }
+      }catch(e){ if(!dead) setApiError(e.message); }
+      finally{ if(!dead) setLoading(false); }
+    })();
+    return ()=>{ dead=true; };
+  },[slate, watched.length]);
 
-  const saveProfile = patch => {
-    setProfile(p=>({...(p||{}),...patch}));
-    if(user) db.collection('users').doc(user.uid).update(patch).catch(e=>console.error(e));
+  const visible = deck.filter(m=>!swipes[m.id]);
+
+  // Top the deck up before it runs dry, so a room never stalls mid-session.
+  useEffect(()=>{
+    if(!slate || !TMDB_ON || slate.mode==='seen') return;
+    if(visible.length > 8 || refilling || usedPages.length >= maxPages) return;
+    let dead=false; setRefilling(true);
+    (async()=>{
+      try{
+        let p=null;
+        for(let i=0;i<30 && p===null;i++){
+          const c = 1 + Math.floor(Math.random()*maxPages);
+          if(!usedPages.includes(c)) p=c;
+        }
+        if(p===null) return;
+        const r = await fetchSlate({slate, dealbreakers, page:p});
+        const have = new Set(deck.map(m=>m.id));
+        const fresh = r.items.filter(m=>!have.has(m.id));
+        remember(fresh);
+        if(!dead && fresh.length){
+          setDeck(d=>[...d, ...rankDeck(fresh, members)]);
+          setUsedPages(u=>[...u,p]);
+        }
+      }catch(e){ /* silent: the deck still has cards */ }
+      finally{ if(!dead) setRefilling(false); }
+    })();
+    return ()=>{ dead=true; };
+  },[visible.length, slate]);
+
+  /* ---- matching ---- */
+  useEffect(()=>{
+    if(demo || !room) return;
+    const ids = Object.keys(members);
+    if(ids.length < 2) return;
+    const byMovie = {};
+    allSwipes.forEach(sw=>{ (byMovie[sw.movieId]=byMovie[sw.movieId]||[]).push(sw); });
+    Object.entries(byMovie).forEach(([mid,list])=>{
+      const yes  = list.filter(x=>x.dir==='like'||x.dir==='super');
+      const seen = list.filter(x=>x.dir==='seen');
+      const all = yes.length===ids.length;
+      const rewatch = seen.length===ids.length;
+      if((all||rewatch) && !seenMatches[mid]){
+        const any=list[0];
+        const m = movie(Number(mid)) || {id:Number(mid), t:any.title, poster:any.poster,
+          y:any.year, providers:any.service?[any.service]:[], a:'#2b2140', b:'#4a3a6b', gid:[], r:0};
+        REG[m.id]=m;
+        setSeenMatches(p=>({...p,[mid]:true}));
+        addMatch(m, rewatch?'rewatch':'want');
+      }
+    });
+  },[allSwipes,members,room,demo]);
+
+  // Live standings: every swipe counts, so the room always has something to look at.
+  const leaderboard = (()=>{
+    if(demo || !room) return [];
+    const total = Math.max(1, Object.keys(members).length);
+    const by = {};
+    allSwipes.forEach(sw=>{
+      const e = by[sw.movieId] || (by[sw.movieId] = {id:sw.movieId, yes:0, swiped:0,
+        title:sw.title, poster:sw.poster, year:sw.year, service:sw.service});
+      e.swiped++;
+      if(sw.dir==='like'||sw.dir==='super') e.yes++;
+    });
+    return Object.values(by).filter(e=>e.yes>0)
+      .sort((a,b)=> b.yes-a.yes || b.swiped-a.swiped)
+      .slice(0,15)
+      .map(e=>({...e, total, unanimous: total>1 && e.yes===total}));
+  })();
+
+  function addMatch(m,type){
+    setMatches(x=> x.find(i=>i.id===m.id)? x : [...x,{id:m.id,type}]);
+    setWatchlist(x=> x.find(i=>i.id===m.id)? x : [...x,{id:m.id,watched:false,rating:0}]);
+    setMatchModal({movie:m,type}); setNotif(n=>n+1);
+  }
+
+  function handleSwipe(m,dir){
+    setSwipes(s=>({...s,[m.id]:dir}));
+    if(dir==='seen'){ setSeenPrompt(m); }
+    if(!demo && room) recordSwipe(room,user.uid,m,dir).catch(e=>console.error(e));
+  }
+
+  const yesCount = m => {
+    if(demo||!room||!m) return null;
+    const n = allSwipes.filter(s=>s.movieId===m.id&&(s.dir==='like'||s.dir==='super')).length;
+    const total = Math.max(1,Object.keys(members).length);
+    return total>1 ? {n,total} : null;
   };
 
-  if(state==='loading') return <div className="intro"><div className="introtop">
-    <div className="introart">🎬</div><p>Loading…</p></div></div>;
-  if(state==='signedout') return <SignInScreen busy={busy} error={err}
-    onSignIn={async()=>{
-      setBusy(true); setErr(null);
-      try{ await signIn(); }catch(e){ setErr(authMessage(e)); }finally{ setBusy(false); }
-    }}
-    onAnon={async n=>{
-      setBusy(true); setErr(null);
-      try{ await signInAnon(n); }
-      catch(e){ setErr(e.code==='auth/operation-not-allowed'
-        ? 'Turn on Anonymous sign-in in Firebase, then try again.' : authMessage(e)); }
-      finally{ setBusy(false); }
-    }}/>;
-  if(state==='denied') return <DeniedScreen email={user?.email} onSignOut={()=>signOutNow()}/>;
-  return <App user={user} profile={profile} saveProfile={saveProfile} demo={!FB_ON}/>;
+  /* ---- room actions ---- */
+  const doCreate = async newSlate=>{
+    setBusy(true); setRoomErr(null);
+    try{
+      const s = {...newSlate, services: newSlate.services?.length? newSlate.services : (P.services||[])};
+      if(demo){ setRoom('DEMO'); setSlate(s); }
+      else {
+        const code = await createRoom(user.uid, user.displayName||P.name, P, s);
+        setRoom(code); setSlate(s);
+      }
+      setSwipes({}); setScreen('room');
+    }catch(e){ setRoomErr(e.message); } finally{ setBusy(false); }
+  };
+  const doJoin = async code=>{
+    setBusy(true); setRoomErr(null);
+    try{
+      const c = await joinRoom(code, user.uid, user.displayName||P.name, P);
+      setRoom(c); setSwipes({}); setScreen('room');
+    }catch(e){ setRoomErr(e.message); } finally{ setBusy(false); }
+  };
+  const leaveRoom = ()=>{ setRoom(null); setSlate(null); setMembers({}); setAllSwipes([]); setDeck([]); };
+
+  useEffect(()=>{
+    if(demo||!user||room) return;
+    const c = new URLSearchParams(location.search).get('join');
+    if(c) doJoin(c);
+  },[user,demo]);
+
+  const playWildcard = ()=>{
+    const pool = deck.length? deck : DEMO;
+    setWildcard(pool[Math.floor(Math.random()*pool.length)]);
+  };
+
+  /* ---- gates ---- */
+  if(!onboarded) return <Tour onDone={()=>save({onboarded:true})}/>;
+  if(needsProfile) return <ProfileScreen first P={P} save={save} watched={watched}
+    onDone={()=>{ save({profileDone:true}); setScreen('swipe'); }} />;
+
+  return (
+    <div className="app">
+      <TopBar room={room} members={members} notif={notif}
+        onBell={()=>{setScreen('matches'); setNotif(0);}}
+        onRoom={()=>setScreen(room?'room':'slate')}
+        onSettings={()=>setScreen('settings')}/>
+
+      {screen==='swipe' && (
+        slate
+          ? <SwipeScreen deck={visible} onSwipe={handleSwipe} loading={loading} apiError={apiError}
+              yesCount={yesCount} onWildcard={playWildcard} onSlate={()=>setScreen('slate')}/>
+          : <NoSlate onStart={()=>setScreen('slate')} onJoin={()=>setScreen('join')}/>
+      )}
+      {screen==='slate' && <SlateScreen P={P} busy={busy} error={roomErr}
+        onStart={doCreate} onJoin={()=>setScreen('join')} onBack={()=>setScreen('swipe')}
+        hasWatched={watched.filter(w=>w.rewatch).length}/>}
+      {screen==='join' && <JoinScreen busy={busy} error={roomErr}
+        onJoin={doJoin} onBack={()=>setScreen('slate')}/>}
+      {screen==='room' && <RoomScreen code={room} members={members} slate={slate}
+        onDone={()=>setScreen('swipe')} onLeave={()=>{leaveRoom(); setScreen('swipe');}}/>}
+      {screen==='matches' && <MatchesScreen matches={matches} leaderboard={leaderboard}
+        inRoom={!!room} onGo={()=>setScreen('swipe')}/>}
+      {screen==='watchlist' && <WatchlistScreen watchlist={watchlist} setWatchlist={setWatchlist}
+        onGo={()=>setScreen('swipe')}/>}
+      {screen==='profile' && <ProfileScreen P={P} save={save} watched={watched} user={user}
+        onWatched={()=>setScreen('library')} onDone={()=>setScreen('swipe')}/>}
+      {screen==='library' && <LibraryScreen watched={watched} user={user} demo={demo}
+        onBack={()=>setScreen('profile')}/>}
+      {screen==='settings' && <SettingsScreen user={user} room={room}
+        onBack={()=>setScreen('swipe')} onAbout={()=>setScreen('about')}
+        onProfile={()=>setScreen('profile')} onSignOut={()=>demo?null:signOutNow()}
+        onReplay={()=>save({onboarded:false})}/>}
+      {screen==='about' && <AboutScreen onBack={()=>setScreen('settings')}/>}
+
+      {['swipe','matches','watchlist','profile'].includes(screen) &&
+        <BottomNav screen={screen} setScreen={setScreen} notif={notif} setNotif={setNotif}/>}
+
+      {matchModal && <MatchModal data={matchModal}
+        onClose={()=>setMatchModal(null)} onList={()=>{setMatchModal(null); setScreen('watchlist');}}/>}
+      {wildcard && <WildcardModal m={wildcard} onClose={()=>setWildcard(null)}
+        onAgain={playWildcard}/>}
+      {seenPrompt && <SeenPrompt m={seenPrompt}
+        onPick={rewatch=>{ if(!demo&&user) saveWatched(user.uid,seenPrompt,rewatch);
+          else setWatched(w=>[...w,{movieId:seenPrompt.id,title:seenPrompt.t,year:seenPrompt.y,
+            poster:seenPrompt.poster,service:provName(seenPrompt),rewatch}]);
+          setSeenPrompt(null); }}/>}
+    </div>
+  );
 }
 
-/* ============================= BOTTOM NAV ============================= */
+/* ============================= TOP BAR / NAV ============================= */
+function TopBar({room,members,notif,onBell,onRoom,onSettings}){
+  const n = Object.keys(members||{}).length;
+  return (
+    <div className="topbar">
+      <div className="brand"><span className="dot"></span>UnOpposed</div>
+      <div className="topbtns">
+        <button className="modechip" onClick={onRoom}>
+          <span className={room?'live':'async'}></span>
+          {room? `${room} · ${n}` : 'Start a room'}
+        </button>
+        <button className="iconbtn" onClick={onBell}>
+          <I.bell/>{notif>0 && <span className="badge">{notif}</span>}
+        </button>
+        <button className="iconbtn" onClick={onSettings}><I.sliders/></button>
+      </div>
+    </div>
+  );
+}
+
 function BottomNav({screen,setScreen,notif,setNotif}){
   const items=[
     {id:'swipe',label:'Swipe',icon:<I.film/>},
     {id:'matches',label:'Matches',icon:<I.spark/>,dot:notif>0},
     {id:'watchlist',label:'Watchlist',icon:<I.list/>},
-    {id:'connections',label:'People',icon:<I.users/>},
+    {id:'profile',label:'Profile',icon:<I.user/>},
   ];
   return (
     <div className="nav">
@@ -1268,24 +1077,565 @@ function BottomNav({screen,setScreen,notif,setNotif}){
   );
 }
 
-/* ============================= MATCH MODAL ============================= */
-function MatchModal({data,partner,onClose,onList}){
+/* ============================= SET THE SLATE ============================= */
+function SlateScreen({P,onStart,onJoin,onBack,busy,error,hasWatched}){
+  const [mood,setMood] = useState('any');
+  const [maxRun,setMaxRun] = useState(120);
+  const [decade,setDecade] = useState('Any');
+  const [services,setServices] = useState(P.services||[]);
+  const [mode,setMode] = useState('new');
+  return (
+    <div className="screen"><div className="pad">
+      <button className="iconbtn" onClick={onBack} style={{marginBottom:12}}><I.back/></button>
+      <div className="head"><h1>Set the Slate</h1>
+        <p>You're setting tonight's rules for everyone in the room. Fewer rules, more matches.</p></div>
+
+      <div className="sectiontitle">What's the mood?</div>
+      <div className="moods">
+        {MOODS.map(m=>(
+          <button key={m.id} className={"mood"+(mood===m.id?' on':'')}
+            onClick={()=>setMood(m.id)}>{m.label}</button>
+        ))}
+      </div>
+
+      <div className="sectiontitle">How long have you got?</div>
+      <div className="grid">
+        {RUNTIMES.map(r=>(
+          <button key={r.v} className={"selchip"+(maxRun===r.v?' on':'')}
+            onClick={()=>setMaxRun(r.v)}>{r.label}</button>
+        ))}
+      </div>
+
+      <div className="sectiontitle">How old can they be?</div>
+      <div className="grid">
+        {DECADES.map(d=>(
+          <button key={d} className={"selchip"+(decade===d?' on':'')}
+            onClick={()=>setDecade(d)}>{d}</button>
+        ))}
+      </div>
+
+      <div className="sectiontitle">Whose TV are you on?</div>
+      <div className="svcgrid">
+        {SERVICES.map(s=>{ const on=services.includes(s.id); return (
+          <button key={s.id} className={"svccard"+(on?' on':'')}
+            onClick={()=>setServices(v=> on? v.filter(x=>x!==s.id):[...v,s.id])}>
+            <span className="sw" style={{background:s.c}}>{s.sw}</span>{s.name}
+            <span className="tick"><I.check/></span>
+          </button>);})}
+      </div>
+
+      {hasWatched>0 &&
+        <>
+          <div className="sectiontitle">Something different</div>
+          <button className={"ghostcta"+(mode==='seen'?'':'')} style={{marginTop:0,
+            borderColor: mode==='seen'?'var(--glow)':'var(--haze)',
+            color: mode==='seen'?'var(--glow)':'var(--text)'}}
+            onClick={()=>setMode(mode==='seen'?'new':'seen')}>
+            {mode==='seen'? '✓ ' : ''}Rewatch night — only films you've all seen
+          </button>
+        </>}
+
+      {error && <p style={{color:'var(--rose)',fontSize:13,marginTop:12}}>{error}</p>}
+      <button className="cta" disabled={busy||!services.length}
+        onClick={()=>onStart({mood,maxRun,decade,services,mode})}>
+        {busy?'Setting up…':'Start the room'}</button>
+      {!services.length &&
+        <p style={{fontSize:12,color:'var(--mist)',textAlign:'center',marginTop:8}}>
+          Pick at least one service.</p>}
+      <button className="ghostcta" onClick={onJoin}>Join someone else's room instead</button>
+    </div></div>
+  );
+}
+
+function NoSlate({onStart,onJoin}){
+  return (
+    <div className="screen"><div className="pad">
+      <div style={{textAlign:'center',padding:'54px 16px'}}>
+        <div style={{fontSize:44}}>🎬</div>
+        <h1 style={{fontSize:26,marginTop:14}}>Ready when you are</h1>
+        <p style={{color:'var(--mist)',fontSize:14,lineHeight:1.55,margin:'10px auto 0',maxWidth:260}}>
+          Start a room and set tonight's Slate, or join a room someone else has already started.
+        </p>
+        <button className="cta" onClick={onStart}>Start a room</button>
+        <button className="ghostcta" onClick={onJoin}>Join with a code</button>
+      </div>
+    </div></div>
+  );
+}
+
+/* ============================= JOIN (number pad) ============================= */
+function JoinScreen({onJoin,onBack,busy,error}){
+  const [code,setCode] = useState('');
+  const press = k => setCode(c => (c+k).slice(0,6));
+  const del = () => setCode(c=>c.slice(0,-1));
+  return (
+    <div className="screen"><div className="pad">
+      <button className="iconbtn" onClick={onBack} style={{marginBottom:12}}><I.back/></button>
+      <div className="head"><h1>Join a room</h1><p>Type the six digits they read out.</p></div>
+      <div className="codebox">
+        {[0,1,2,3,4,5].map(i=>(
+          <i key={i} className={code[i]?'on':''}>{code[i]||''}</i>
+        ))}
+      </div>
+      {error && <p style={{color:'var(--rose)',fontSize:13,textAlign:'center'}}>{error}</p>}
+      <div className="pad3">
+        {[1,2,3,4,5,6,7,8,9].map(n=>(
+          <button key={n} className="key" onClick={()=>press(String(n))}>{n}</button>
+        ))}
+        <button className="key fn" onClick={()=>setCode('')}>Clear</button>
+        <button className="key" onClick={()=>press('0')}>0</button>
+        <button className="key fn" onClick={del}>Delete</button>
+      </div>
+      <button className="cta" disabled={code.length<6||busy} onClick={()=>onJoin(code)}>
+        {busy?'Joining…':'Join room'}</button>
+    </div></div>
+  );
+}
+
+/* ============================= ROOM ============================= */
+function RoomScreen({code,members,slate,onDone,onLeave}){
+  const list = Object.values(members||{});
+  const link = `${location.origin}${location.pathname}?join=${code}`;
+  const mood = moodById(slate?.mood);
+  return (
+    <div className="screen"><div className="pad">
+      <div className="head"><h1>Your room</h1><p>Read the number out, or share the link.</p></div>
+      <div className="bigcode" style={{margin:'18px 0 6px'}}>{code}</div>
+      <button className="ghostcta" onClick={()=>{
+        if(navigator.share) navigator.share({title:'Join my UnOpposed room',url:link});
+        else { navigator.clipboard?.writeText(link); alert('Link copied'); }
+      }}>Share join link</button>
+
+      {slate &&
+        <>
+          <div className="sectiontitle">Tonight's Slate</div>
+          <div className="chips">
+            {mood && <span className="chip svc">{mood.label}</span>}
+            <span className="chip">{slate.maxRun>=400?'Any length':`Under ${slate.maxRun} min`}</span>
+            <span className="chip">{slate.decade}</span>
+            {slate.mode==='seen' && <span className="chip">Rewatch night</span>}
+          </div>
+        </>}
+
+      <div className="sectiontitle">In the room · {list.length}</div>
+      {list.map((m,i)=>(
+        <div className="row" key={i}>
+          <div className="thumb" style={{width:44,height:44,borderRadius:14,background:'var(--velvet2)',
+            display:'flex',alignItems:'center',justifyContent:'center',fontSize:19}}>🍿</div>
+          <div className="rowmain"><div className="tt">{m.name}</div></div>
+        </div>
+      ))}
+      {list.length<2 &&
+        <p style={{fontSize:13,color:'var(--mist)',textAlign:'center',marginTop:8,lineHeight:1.5}}>
+          Waiting for someone else. You can start swiping now — matches appear as they join.</p>}
+
+      <button className="cta" onClick={onDone}>Start swiping</button>
+      <button className="ghostcta" onClick={onLeave}>Leave room</button>
+    </div></div>
+  );
+}
+
+/* ============================= SWIPE ============================= */
+function SwipeScreen({deck,onSwipe,loading,apiError,yesCount,onWildcard,onSlate}){
+  const top = deck[0];
+  return (
+    <>
+      <div className="screen" style={{overflow:'hidden'}}>
+        <div className="deck">
+          {loading && !deck.length &&
+            <div className="empty"><div className="film">🎞️</div>
+              <h2>Building your Slate</h2>
+              <p>Finding titles that fit tonight's rules.</p></div>}
+          {apiError && !loading &&
+            <div className="empty"><div className="film">⚠️</div>
+              <h2>Couldn't reach TMDB</h2><p>{apiError}</p></div>}
+          {!loading && !apiError && !deck.length &&
+            <div className="empty">
+              <div className="film">🎲</div>
+              <h2>That's everything</h2>
+              <p>You've been through the whole Slate. Let the Wildcard decide, or set a new Slate.</p>
+              <button className="cta" style={{maxWidth:230}} onClick={onWildcard}>Play the Wildcard</button>
+              <button className="textbtn" onClick={onSlate}>Set a new Slate →</button>
+            </div>}
+          {deck.slice(0,3).reverse().map((m,i,arr)=>{
+            const depth = arr.length-1-i;
+            return <Card key={m.id} m={m} depth={depth} isTop={depth===0}
+              onSwipe={onSwipe} tally={depth===0? yesCount(m) : null}/>;
+          })}
+        </div>
+      </div>
+      {top && <ActionBar m={top} onSwipe={onSwipe} onWildcard={onWildcard}/>}
+    </>
+  );
+}
+
+function Card({m,depth,onSwipe,isTop,tally}){
+  const ref = useRef(null);
+  const [drag,setDrag] = useState({x:0,y:0,active:false});
+  const [expanded,setExpanded] = useState(false);
+  const start = useRef({x:0,y:0});
+
+  const down = e=>{ if(!isTop) return; start.current={x:e.clientX,y:e.clientY};
+    setDrag(d=>({...d,active:true})); ref.current.setPointerCapture(e.pointerId); };
+  const move = e=>{ if(!drag.active) return;
+    setDrag({x:e.clientX-start.current.x, y:e.clientY-start.current.y, active:true}); };
+  const up = ()=>{
+    if(!drag.active) return;
+    const {x,y}=drag;
+    if(y<-120 && Math.abs(x)<90){ setDrag({x:0,y:-800,active:false}); setTimeout(()=>onSwipe(m,'super'),180); return; }
+    if(x>120){ setDrag({x:800,y,active:false}); setTimeout(()=>onSwipe(m,'like'),180); return; }
+    if(x<-120){ setDrag({x:-800,y,active:false}); setTimeout(()=>onSwipe(m,'nope'),180); return; }
+    setDrag({x:0,y:0,active:false});
+  };
+
+  const yesOp = Math.max(0,Math.min(1,drag.x/120));
+  const noOp  = Math.max(0,Math.min(1,-drag.x/120));
+  const supOp = Math.max(0,Math.min(1,-drag.y/120)) * (Math.abs(drag.x)<90?1:0);
+  const style = {
+    transform:`translate(${drag.x}px, ${drag.y}px) rotate(${drag.x/18}deg) scale(${1-depth*0.04})`,
+    transition: drag.active?'none':'transform .35s cubic-bezier(.2,.9,.3,1)',
+    opacity:1-depth*0.15, zIndex:10-depth, pointerEvents:isTop?'auto':'none',
+  };
+  const gens = (m.gid||[]).map(genreName).filter(Boolean).slice(0,2);
+
+  return (
+    <div ref={ref} className={"card"+(expanded?' expanded':'')} style={style}
+      onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up}>
+      <div className="poster" style={m.poster
+        ? {backgroundImage:`url(${m.poster})`,backgroundSize:'cover',backgroundPosition:'center'}
+        : {background:`linear-gradient(150deg, ${m.a}, ${m.b})`}}></div>
+      <div className="grain"></div>
+      {!m.poster && <div className="postertitle">{m.t}</div>}
+      <div className="glowedge" style={{opacity:yesOp*0.9}}></div>
+      <div className="stamp yes" style={{opacity:yesOp}}>Yes</div>
+      <div className="stamp no" style={{opacity:noOp}}>Pass</div>
+      <div className="stamp sup" style={{opacity:supOp}}>★ Must see</div>
+
+      <button className="seenpill" onPointerDown={e=>e.stopPropagation()}
+        onClick={()=>onSwipe(m,'seen')}><I.eye/> Seen it</button>
+
+      <div className="cardbody" onClick={()=>setExpanded(x=>!x)}>
+        {tally && <div style={{fontSize:12,fontWeight:700,color:'var(--glow)',marginBottom:8}}>
+          {tally.n} of {tally.total} want this</div>}
+        <div className="chips">
+          <span className="chip svc">{provName(m)}</span>
+          {gens.map(g=><span key={g} className="chip">{g}</span>)}
+        </div>
+        <h2>{m.t}</h2>
+        <div className="meta">
+          {m.r>0 && <span className="rate">★ {m.r.toFixed(1)}</span>}
+          <span>{m.y}</span>{m.run? <><span>·</span><span>{m.run} min</span></> : null}
+          <a href={trailerURL(m)} target="_blank" rel="noopener noreferrer"
+            onPointerDown={e=>e.stopPropagation()} onClick={e=>e.stopPropagation()}
+            style={{marginLeft:'auto',display:'flex',alignItems:'center',gap:5,
+              color:'var(--glow)',textDecoration:'none',fontWeight:600}}>
+            <I.play/> Trailer</a>
+        </div>
+        {m.o && <div className="overview">{m.o}</div>}
+      </div>
+    </div>
+  );
+}
+
+function ActionBar({m,onSwipe,onWildcard}){
+  return (
+    <div className="actions">
+      <button className="bulb nope" onClick={()=>onSwipe(m,'nope')} aria-label="Pass"><I.x/></button>
+      <button className="bulb sm seen" onClick={()=>onSwipe(m,'seen')} aria-label="Seen it"><I.eye/></button>
+      <button className="bulb like" onClick={()=>onSwipe(m,'like')} aria-label="Yes"><I.heart/></button>
+      <button className="bulb sm super" onClick={()=>onSwipe(m,'super')} aria-label="Must see"><I.star/></button>
+      <button className="bulb sm" onClick={onWildcard} aria-label="Wildcard"
+        style={{fontSize:20}}>🎲</button>
+    </div>
+  );
+}
+
+/* ============================= MATCHES / WATCHLIST ============================= */
+function MatchesScreen({matches,leaderboard,inRoom,onGo}){
+  const won = (leaderboard||[]).filter(e=>e.unanimous);
+  const running = (leaderboard||[]).filter(e=>!e.unanimous);
+  const empty = !matches.length && !(leaderboard||[]).length;
+  return (
+    <div className="screen"><div className="pad">
+      <div className="head"><h1>Matches</h1>
+        <p>{inRoom
+          ? 'Everything the room has said yes to, best first.'
+          : 'Titles nobody objected to.'}</p></div>
+
+      {empty &&
+        <div style={{textAlign:'center',padding:'50px 20px',color:'var(--mist)'}}>
+          <div style={{fontSize:38}}>✨</div>
+          <p style={{fontWeight:600,marginTop:10}}>Nothing yet</p>
+          <p style={{fontSize:13}}>Keep swiping — everything the room likes shows up here, ranked.</p>
+          <button className="textbtn" onClick={onGo}>Back to swiping →</button>
+        </div>}
+
+      {won.length>0 && <>
+        <div className="sectiontitle">Unopposed · everyone said yes</div>
+        {won.map(e=><Standing key={e.id} e={e} hero/>)}
+      </>}
+
+      {running.length>0 && <>
+        <div className="sectiontitle">Front runners</div>
+        {running.map(e=><Standing key={e.id} e={e}/>)}
+        <p style={{fontSize:12.5,color:'var(--mist)',lineHeight:1.55,margin:'12px 2px 0'}}>
+          Nothing unanimous yet? The top of this list is the closest the room has come —
+          plenty of nights end there.
+        </p>
+      </>}
+
+      {!inRoom && matches.length>0 && <>
+        <div className="sectiontitle">Earlier matches</div>
+        {matches.map(({id,type})=>{ const m=movie(id); if(!m) return null; return (
+          <div className="row" key={id}>
+            <Thumb m={m}/>
+            <div className="rowmain">
+              <div className="tt">{m.t}</div>
+              <div className="sub">{provName(m)}{m.run?` · ${m.run} min`:''}</div>
+            </div>
+            <span className={"tag "+(type==='rewatch'?'rewatch':'want')}>
+              {type==='rewatch'?'Rewatch':'Unopposed'}</span>
+          </div>);})}
+      </>}
+    </div></div>
+  );
+}
+
+function Standing({e,hero}){
+  const m = movie(e.id) || {t:e.title, poster:e.poster, y:e.year, providers:[e.service]};
+  const pct = Math.round(100*e.yes/e.total);
+  return (
+    <div className="row" style={hero?{borderColor:'rgba(255,194,75,.5)',
+      background:'linear-gradient(180deg,rgba(255,194,75,.10),var(--velvet))'}:null}>
+      <Thumb m={m}/>
+      <div className="rowmain">
+        <div className="tt">{m.t||e.title}</div>
+        <div className="sub">{e.service||provName(m)}{e.year?` · ${e.year}`:''}</div>
+        <div style={{height:5,borderRadius:99,background:'var(--haze)',marginTop:8,overflow:'hidden'}}>
+          <div style={{height:'100%',width:pct+'%',borderRadius:99,
+            background: hero? 'var(--glow)' : 'linear-gradient(90deg,var(--glow),var(--rose))'}}></div>
+        </div>
+      </div>
+      <div style={{textAlign:'right',flex:'0 0 auto'}}>
+        <div style={{fontFamily:'Bricolage Grotesque',fontWeight:800,fontSize:17,
+          color: hero?'var(--glow)':'var(--text)'}}>{e.yes}<span style={{color:'var(--mist)',
+          fontSize:13}}>/{e.total}</span></div>
+        <div style={{fontSize:10,color:'var(--mist)'}}>{hero?'unopposed':'want it'}</div>
+      </div>
+    </div>
+  );
+}
+
+function Thumb({m}){
+  return <div className="thumb" style={m.poster
+    ? {backgroundImage:`url(${m.poster})`,backgroundSize:'cover',backgroundPosition:'center'}
+    : {background:`linear-gradient(150deg,${m.a||'#2b2140'},${m.b||'#4a3a6b'})`}}></div>;
+}
+
+function WatchlistScreen({watchlist,setWatchlist,onGo}){
+  const setRating=(id,r)=>setWatchlist(w=>w.map(i=>i.id===id?{...i,rating:r}:i));
+  const toggle=(id)=>setWatchlist(w=>w.map(i=>i.id===id?{...i,watched:!i.watched}:i));
+  return (
+    <div className="screen"><div className="pad">
+      <div className="head"><h1>Shared watchlist</h1>
+        <p>Every match lands here. Mark what you've watched and rate it together.</p></div>
+      {!watchlist.length &&
+        <div style={{textAlign:'center',padding:'50px 20px',color:'var(--mist)'}}>
+          <div style={{fontSize:38}}>🍿</div>
+          <p style={{fontWeight:600,marginTop:10}}>Nothing saved yet</p>
+          <p style={{fontSize:13}}>Your matches build this list automatically.</p>
+          <button className="textbtn" onClick={onGo}>Start swiping →</button>
+        </div>}
+      {watchlist.map(({id,watched,rating})=>{ const m=movie(id); if(!m) return null; return (
+        <div className="row" key={id} style={{alignItems:'flex-start'}}>
+          <Thumb m={m}/>
+          <div className="rowmain">
+            <div className="tt">{m.t}</div>
+            <div className="sub">{provName(m)}</div>
+            <div style={{display:'flex',alignItems:'center',gap:10,marginTop:8}}>
+              <div className="stars">
+                {[1,2,3,4,5].map(n=><span key={n} onClick={()=>setRating(id,n)}
+                  style={{color:n<=rating?'var(--glow)':'var(--haze)'}}>
+                  {n<=rating? <I.star style={{width:18,height:18}}/> : <I.starO/>}</span>)}
+              </div>
+              <button className={"watchtoggle"+(watched?' on':'')} onClick={()=>toggle(id)}>
+                {watched?'✓ Watched':'Mark watched'}</button>
+            </div>
+          </div>
+        </div>);})}
+    </div></div>
+  );
+}
+
+/* ============================= PROFILE ============================= */
+function ProfileScreen({P,save,watched,user,onWatched,onDone,first}){
+  const tg = (key,val)=> save({[key]: (P[key]||[]).includes(val)
+    ? (P[key]||[]).filter(x=>x!==val) : [...(P[key]||[]),val]});
+  return (
+    <div className="screen"><div className="pad">
+      <div className="head">
+        <h1>{first?'Set up your profile':'Your profile'}</h1>
+        <p>{first
+          ? 'Saved once and reused every night — you won\u2019t be asked again.'
+          : 'These stick around between rooms.'}</p>
+      </div>
+
+      {user && !first &&
+        <div className="row">
+          <div className="thumb" style={{width:48,height:48,borderRadius:16,background:'var(--velvet2)',
+            display:'flex',alignItems:'center',justifyContent:'center',fontSize:22}}>🎬</div>
+          <div className="rowmain">
+            <div className="tt">{user.displayName||P.name||'You'}</div>
+            <div className="sub">{user.email||'Guest account'}</div>
+          </div>
+        </div>}
+
+      <div className="sectiontitle">Services you pay for</div>
+      <div className="svcgrid">
+        {SERVICES.map(s=>{ const on=(P.services||[]).includes(s.id); return (
+          <button key={s.id} className={"svccard"+(on?' on':'')} onClick={()=>tg('services',s.id)}>
+            <span className="sw" style={{background:s.c}}>{s.sw}</span>{s.name}
+            <span className="tick"><I.check/></span>
+          </button>);})}
+      </div>
+
+      <div className="sectiontitle">Genres you love</div>
+      <p style={{fontSize:12.5,color:'var(--mist)',margin:'0 2px 10px',lineHeight:1.5}}>
+        These don't filter anything out — they push films you'd like nearer the top for everyone.
+      </p>
+      <div className="grid">
+        {GENRES.map(g=><button key={g} className={"selchip"+((P.genres||[]).includes(g)?' on':'')}
+          onClick={()=>tg('genres',g)}>{g}</button>)}
+      </div>
+
+      <div className="sectiontitle">Dealbreakers · never show these</div>
+      <p style={{fontSize:12.5,color:'var(--mist)',margin:'0 2px 10px',lineHeight:1.5}}>
+        If anyone in the room has a dealbreaker, it applies to the whole room.
+      </p>
+      <div className="grid">
+        {GENRES.map(g=><button key={g} className={"selchip danger"+((P.dealbreakers||[]).includes(g)?' on':'')}
+          onClick={()=>tg('dealbreakers',g)}>{g}</button>)}
+      </div>
+
+      {!first &&
+        <>
+          <div className="sectiontitle">Your library</div>
+          <button className="ghostcta" style={{marginTop:0,display:'flex',
+            alignItems:'center',justifyContent:'space-between'}} onClick={onWatched}>
+            <span>Films you've seen</span>
+            <span style={{color:'var(--glow)',fontWeight:700}}>{watched.length}</span>
+          </button>
+        </>}
+
+      {first &&
+        <button className="cta" disabled={!(P.services||[]).length} onClick={onDone}>
+          {(P.services||[]).length? 'Save & continue' : 'Pick at least one service'}</button>}
+    </div></div>
+  );
+}
+
+/* ============================= WATCHED LIBRARY ============================= */
+function LibraryScreen({watched,user,demo,onBack}){
+  const flip = w => {
+    if(demo||!user) return;
+    saveWatched(user.uid, {id:w.movieId,t:w.title,y:w.year,poster:w.poster,
+      providers:[w.service]}, !w.rewatch);
+  };
+  const sorted = watched.slice().sort((a,b)=>(b.ts||0)-(a.ts||0));
+  return (
+    <div className="screen"><div className="pad">
+      <button className="iconbtn" onClick={onBack} style={{marginBottom:12}}><I.back/></button>
+      <div className="head"><h1>Films you've seen</h1>
+        <p>Tap the toggle for anything you'd happily watch again — those become your rewatch nights.</p></div>
+      {!sorted.length &&
+        <div style={{textAlign:'center',padding:'46px 20px',color:'var(--mist)'}}>
+          <div style={{fontSize:38}}>👀</div>
+          <p style={{fontWeight:600,marginTop:10}}>Nothing here yet</p>
+          <p style={{fontSize:13}}>Tap “Seen it” on any card and it'll show up here.</p>
+        </div>}
+      {sorted.map(w=>(
+        <div className="row" key={w.movieId}>
+          <Thumb m={{poster:w.poster}}/>
+          <div className="rowmain">
+            <div className="tt">{w.title}</div>
+            <div className="sub">{w.year||''}{w.service?` · ${w.service}`:''}</div>
+            <div style={{fontSize:11.5,color:w.rewatch?'var(--ok)':'var(--mist)',marginTop:4}}>
+              {w.rewatch?'Happy to rewatch':'Seen it, once was enough'}</div>
+          </div>
+          <button className={"tog"+(w.rewatch?' on':'')} onClick={()=>flip(w)}><b></b></button>
+        </div>
+      ))}
+    </div></div>
+  );
+}
+
+/* ============================= SETTINGS / ABOUT ============================= */
+function SettingsScreen({user,room,onBack,onAbout,onProfile,onSignOut,onReplay}){
+  return (
+    <div className="screen"><div className="pad">
+      <button className="iconbtn" onClick={onBack} style={{marginBottom:12}}><I.back/></button>
+      <div className="head"><h1>Settings</h1></div>
+      <div className="sectiontitle">You</div>
+      <button className="ghostcta" style={{marginTop:0}} onClick={onProfile}>
+        Services, genres & dealbreakers</button>
+      <div className="sectiontitle">App</div>
+      <button className="ghostcta" style={{marginTop:0}} onClick={onReplay}>Watch the tour again</button>
+      <button className="ghostcta" onClick={onAbout}>About & credits</button>
+      {user && <button className="ghostcta" style={{color:'var(--rose)'}} onClick={onSignOut}>Sign out</button>}
+    </div></div>
+  );
+}
+
+function AboutScreen({onBack}){
+  const box = {background:'var(--velvet)',border:'1px solid var(--haze)',borderRadius:16,padding:16,marginBottom:4};
+  return (
+    <div className="screen"><div className="pad">
+      <button className="iconbtn" onClick={onBack} style={{marginBottom:12}}><I.back/></button>
+      <div className="head"><h1>About & credits</h1>
+        <p>UnOpposed is a personal, non-commercial project.</p></div>
+      <div className="sectiontitle">Movie & TV data</div>
+      <div style={box}>
+        <img src="tmdb-logo.svg" alt="The Movie Database"
+          style={{height:24,display:'block',marginBottom:12}}
+          onError={e=>{e.target.style.display='none';}}/>
+        <p style={{fontSize:14,lineHeight:1.55,margin:0}}>
+          This product uses the TMDB API but is not endorsed or certified by TMDB.</p>
+      </div>
+      <div className="sectiontitle">Where to watch</div>
+      <div style={box}>
+        <p style={{fontSize:14,lineHeight:1.55,margin:0,color:'#d8cff0'}}>
+          Streaming availability data is provided by JustWatch.</p>
+      </div>
+      <div className="sectiontitle">Good to know</div>
+      <div style={box}>
+        <p style={{fontSize:13.5,lineHeight:1.6,margin:0,color:'#d8cff0'}}>
+          UnOpposed never asks for your streaming passwords. You tell it which services you
+          subscribe to, and it only shows titles available on those.</p>
+      </div>
+    </div></div>
+  );
+}
+
+/* ============================= MODALS ============================= */
+function MatchModal({data,onClose,onList}){
   const {movie:m,type}=data;
   const rw = type==='rewatch';
   return (
     <div className="overlay" onClick={onClose}>
       <div className="matchcard" onClick={e=>e.stopPropagation()}>
         <div className="bulbrow"><i></i><i></i><i></i><i></i><i></i></div>
-        <div className={"marquee"+(rw?' rw':'')}>{rw?'REWATCH NIGHT':'IT\u2019S A MATCH'}</div>
+        <div className={"marquee"+(rw?' rw':'')}>{rw?'REWATCH NIGHT':'UNOPPOSED'}</div>
         <div className="bulbrow"><i></i><i></i><i></i><i></i><i></i></div>
         <div className="posters2">
-          <div className="mini" style={{background:`linear-gradient(150deg,${m.a},${m.b})`}}>{m.t}</div>
-          <div className="mini" style={{background:'var(--velvet2)',justifyContent:'center',fontSize:30,alignItems:'center'}}>{ALEX.avatar}</div>
+          <div className="mini" style={m.poster
+            ? {backgroundImage:`url(${m.poster})`,backgroundSize:'cover'}
+            : {background:`linear-gradient(150deg,${m.a},${m.b})`}}>{m.poster?'':m.t}</div>
         </div>
         <p className="matchsub">
-          {rw ? `You and ${partner||'Alex'} have both seen ` : `You and ${partner||'Alex'} both want to watch `}
-          <b style={{color:'var(--text)'}}>{m.t}</b>{rw?' — and loved it.':'.'} It's streaming on {provName(m)}.
+          Nobody objected to <b style={{color:'var(--text)'}}>{m.t}</b>. It's on {provName(m)}.
         </p>
+        <a className="ghostcta" href={trailerURL(m)} target="_blank" rel="noopener noreferrer"
+          style={{display:'block',textDecoration:'none',marginTop:0}}>Watch the trailer</a>
         <button className="cta" onClick={onList}>Add to watchlist</button>
         <button className="ghostcta" onClick={onClose}>Keep swiping</button>
       </div>
@@ -1293,118 +1643,38 @@ function MatchModal({data,partner,onClose,onList}){
   );
 }
 
-/* ============================= ONBOARDING + GUIDED TOUR ============================= */
-function Onboarding({services,setServices,filters,setFilters,onConnect,onDone,goScreen}){
-  // phase: 'intro' (slides) -> 'tour' (guided across real screens)
-  const [phase,setPhase]=useState('intro');
-  const [slide,setSlide]=useState(0);
-  const [tour,setTour]=useState(0);
-  const [connected,setConnected]=useState(false);
-
-  const slides=[
-    {art:'🎬', h:<>Never argue about <span className="hl">what to watch</span> again</>,
-     p:'Everyone in the room swipes through movies on the services you already pay for. When nobody objects, it\u2019s a match.'},
-    {art:'👉👈', h:<>Swipe together, <span className="hl">match instantly</span></>,
-     p:'Right for yes, left for pass, up for a must-see. The moment your picks line up, both of you get the same lit-up match.'},
-    {art:'🍿', h:<>Built around <span className="hl">your</span> subscriptions</>,
-     p:'Tell us which services you have. Every title in your queue is something one of you can actually press play on tonight.'},
-  ];
-
-  // Guided tour steps — each drives the real screen behind the sheet
-  const steps=[
-    {screen:'connect', tag:'Step 1 of 6', h:'Connect with a friend',
-     p:'Have your friend scan this code, or share the room code. We\u2019ll link your two queues so a match needs a yes from both of you. Tap Connect to try it.'},
-    {screen:'filters', tag:'Step 2 of 6', h:'Pick your services',
-     p:'Check off everything you subscribe to. We only ever queue titles that are streaming on one of these — no dead ends.'},
-    {screen:'filters', tag:'Step 3 of 6', h:'Set the vibe',
-     p:'Optional filters shape the queue: genre, mood, time period, how long you\u2019ve got tonight, and dealbreakers you never want to see.'},
-    {screen:'swipe', tag:'Step 4 of 6', h:'Swipe the queue',
-     p:'Right = yes, left = pass, up = must-see. Already seen it? Tap “I\u2019ve seen this” — if your friend loved it too, you\u2019ll get a rewatch match.'},
-    {screen:'matches', tag:'Step 5 of 6', h:'Matches & watchlist',
-     p:'Every match lights up for both of you and drops into a shared watchlist. Mark things watched and rate them together afterward.'},
-    {screen:'connections', tag:'Step 6 of 6', h:'Your people',
-     p:'Come back anytime to open a past connection and see everything you two love — no new session needed. That\u2019s it. Ready?'},
-  ];
-
-  useEffect(()=>{ if(phase==='tour') goScreen(steps[tour].screen); },[phase,tour]);
-
-  if(phase==='intro'){
-    const s=slides[slide];
-    return (
-      <div className="intro">
-        <div className="introtop">
-          <div className="introart">{s.art}</div>
-          <h1>{s.h}</h1>
-          <p>{s.p}</p>
-          <div className="dots">{slides.map((_,i)=><i key={i} className={i===slide?'on':''}></i>)}</div>
-        </div>
-        <div className="introfoot">
-          <button className="cta" onClick={()=> slide<slides.length-1? setSlide(slide+1):setPhase('tour')}>
-            {slide<slides.length-1?'Next':'Show me how it works'}</button>
-          {slide<slides.length-1 && <button className="ghostcta" onClick={()=>setPhase('tour')}>Skip intro</button>}
-        </div>
-      </div>
-    );
-  }
-
-  // TOUR phase: render a faux app frame behind the sheet
-  const st=steps[tour];
+function WildcardModal({m,onClose,onAgain}){
   return (
-    <div className="app">
-      <TopBar session={null} members={{}} notif={1} onBell={()=>{}} onRoom={()=>{}} onSettings={()=>{}}/>
-      {/* behind-the-sheet content mirrors the real screen being explained */}
-      {st.screen==='connect' && <ConnectPane connected={connected} onConnect={()=>{ setConnected(true); onConnect('Alex'); }}/>}
-      {st.screen==='filters' && <FiltersScreen filters={filters} setFilters={setFilters} services={services} setServices={setServices} onDone={()=>{}}/>}
-      {st.screen==='swipe' && <SwipeScreen deck={M.slice(0,3)} onSwipe={()=>{}} onOpenFilters={()=>{}} partner="Alex"/>}
-      {st.screen==='matches' && <MatchesScreen matches={[{id:1,type:'want'},{id:7,type:'want'}]} onGo={()=>{}}/>}
-      {st.screen==='connections' && <ConnectionsScreen matches={[{id:1}]} onOpen={()=>{}} partner="Alex"/>}
-
-      <BottomNav screen={st.screen==='connect'?'swipe':st.screen} setScreen={()=>{}} notif={1} setNotif={()=>{}}/>
-
-      <div className="tour">
-        <div className="step">{st.tag}</div>
-        <h3>{st.h}</h3>
-        <p>{st.p}</p>
-        <div className="tourfoot">
-          <button className="skip" onClick={onDone}>Skip tour</button>
-          {tour>0 && <button className="tback" onClick={()=>setTour(tour-1)}>Back</button>}
-          <button className="tnext" onClick={()=> tour<steps.length-1? setTour(tour+1):onDone()}>
-            {tour<steps.length-1?'Next':'Start swiping'}</button>
-        </div>
+    <div className="overlay" onClick={onClose}>
+      <div className="matchcard" onClick={e=>e.stopPropagation()}>
+        <div className="dice">🎲</div>
+        <div className="marquee" style={{fontSize:30}}>WILDCARD</div>
+        <p className="matchsub" style={{marginTop:14}}>
+          The dice picked <b style={{color:'var(--text)'}}>{m.t}</b>
+          {m.y?` (${m.y})`:''} on {provName(m)}. That's the one.
+        </p>
+        <a className="cta" href={trailerURL(m)} target="_blank" rel="noopener noreferrer"
+          style={{display:'block',textDecoration:'none'}}>Watch the trailer</a>
+        <button className="ghostcta" onClick={onAgain}>Roll again</button>
+        <button className="ghostcta" onClick={onClose}>Back to swiping</button>
       </div>
     </div>
   );
 }
 
-function ConnectPane({connected,onConnect}){
+function SeenPrompt({m,onPick}){
   return (
-    <div className="screen"><div className="pad">
-      <div className="head"><h1>Connect</h1><p>One quick link and your queues are paired.</p></div>
-      <div className="qrwrap" style={{marginTop:24}}>
-        <div className="qrbox"><QR/></div>
-        <div className="muted" style={{fontSize:13}}>or share room code</div>
-        <div className="code">RM-4K7Q</div>
-        {!connected
-          ? <button className="cta" style={{maxWidth:220}} onClick={onConnect}>Connect with a friend</button>
-          : <div className="connected"><I.check/> Connected with Alex</div>}
+    <div className="overlay">
+      <div className="matchcard" onClick={e=>e.stopPropagation()}>
+        <div style={{fontSize:40,textAlign:'center'}}>👀</div>
+        <h2 style={{fontFamily:'Bricolage Grotesque',fontSize:24,textAlign:'center',margin:'10px 0 6px'}}>
+          Added to your library</h2>
+        <p className="matchsub"><b style={{color:'var(--text)'}}>{m.t}</b> is in your seen list.
+          Would you watch it again?</p>
+        <button className="cta" onClick={()=>onPick(true)}>Yes, happily</button>
+        <button className="ghostcta" onClick={()=>onPick(false)}>Once was enough</button>
       </div>
-    </div></div>
-  );
-}
-
-// tiny deterministic QR-looking grid (decorative)
-function QR(){
-  const cells=[]; const n=11;
-  const seed=[0,2,4,6,8,10,12,14,16,18,20,23,25,27,29,31,34,36,40,44,48,52,56,60,64,68,72,76,80,84,88,92,96,100,104,108,112,116,120];
-  for(let i=0;i<n*n;i++){ const on = (i%3===0)||(i%7===0)||seed.includes(i)|| (i<n)||(i%n===0); cells.push(on); }
-  // corner finder squares
-  return (
-    <svg viewBox="0 0 110 110" width="100%" height="100%">
-      {cells.map((c,i)=> c && <rect key={i} x={(i%n)*10} y={Math.floor(i/n)*10} width="9" height="9" rx="1.5" fill="#14101F"/>) }
-      {[[0,0],[80,0],[0,80]].map(([x,y],k)=>(
-        <g key={k}><rect x={x} y={y} width="30" height="30" rx="6" fill="none" stroke="#14101F" strokeWidth="5"/>
-        <rect x={x+10} y={y+10} width="10" height="10" rx="2" fill="#FFC24B"/></g>))}
-    </svg>
+    </div>
   );
 }
 
